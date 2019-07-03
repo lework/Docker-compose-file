@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  reverse-proxy:
+    container_name: traefik
+    image: traefik # The official Traefik docker image
+    command: --api --accessLog --debug --etcd --etcd.endpoint=etcd:2379 --etcd.useapiv3=true
+    ports:
+      - "80:80"     # The HTTP port
+      - "8080:8080" # The Web UI (enabled by --api)
+    network_mode: docker
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - "/etc/localtime:/etc/localtime"

@@ -1,0 +1,14 @@
+version: '3'
+services:
+  activemq:
+    container_name: activemq
+    hostname: activemq
+    image: lework/activemq:5.15.4
+    network_mode: docker
+    volumes:
+      - "./activemq.xml:/usr/local/activemq/conf/activemq.xml"
+      - "./activemq_data:/usr/local/activemq/data"
+    ports:
+      - "61616:61616"
+      - "8161:8161"
+    restart: always

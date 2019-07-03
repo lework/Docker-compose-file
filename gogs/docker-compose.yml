@@ -1,0 +1,11 @@
+version: '3'
+services:
+   gogs:
+    container_name: gogs
+    image: gogs/gogs
+    volumes:
+      - ./gogs_data:/data
+      - "/etc/localtime:/etc/localtime"
+    ports:
+      - "3000:3000"
+    restart: always

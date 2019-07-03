@@ -1,0 +1,30 @@
+groups:
+- name: blackbox-exporter
+  rules:
+  - alert: StatusCode
+    expr: probe_http_status_code <= 199 AND probe_http_status_code >= 300
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Status Code (instance {{ $labels.instance }})"
+      description: "HTTP status code is not 200-299\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+  
+  - alert: SslCertificateWillExpireSoon
+    expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 30
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "SSL certificate will expire soon (instance {{ $labels.instance }})"
+      description: "SSL certificate expires in 30 days\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+  
+  - alert: SslCertificateHasExpired
+    expr: probe_ssl_earliest_cert_expiry - time()  <= 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "SSL certificate has expired (instance {{ $labels.instance }})"
+      description: "SSL certificate has expired already\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+

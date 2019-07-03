@@ -1,0 +1,42 @@
+version: '3.2'
+services:
+  coredns:
+    container_name: coredns
+    hostname: coredns
+    image: coredns/coredns:1.2.6
+    command: -conf /Corefile
+    network_mode: docker
+    volumes:
+      - './coredns/conf/Corefile:/Corefile'
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "18080:18080"
+      - "19153:19153"
+    depends_on:
+      - coredns-etcd
+    restart: always
+
+  coredns-etcd:
+    container_name: coredns-etcd
+    hostname: coredns-etcd
+    image: bitnami/etcd:3.3.10 
+    ports:
+      - 2379:2379
+      - 2380:2380
+    network_mode: docker
+    volumes:
+      - "./etcd/data:/opt/bitnami/etcd/data"
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCDCTL_API=3
+    restart: always
+
+  coredns-etcdui:
+    container_name: coredns-etcdui
+    image: deltaprojects/etcdkeeper:latest
+    ports:
+      - "18081:8080"
+    depends_on:
+      - coredns-etcd
+    restart: always

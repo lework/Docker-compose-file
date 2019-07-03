@@ -1,0 +1,30 @@
+version: '3'
+services:
+  mindoc:
+    container_name: mindoc
+    image: registry.cn-hangzhou.aliyuncs.com/mindoc/mindoc:v2.0
+    privileged: false
+    restart: always
+    ports:
+      - 8181:8181
+    volumes:
+      - ./mindoc_database:/mindoc/database
+      - ./mindoc_uploads:/mindoc/uploads
+      - /etc/localtime:/etc/localtime
+    environment:
+      - MINDOC_RUN_MODE=prod
+      - MINDOC_DB_ADAPTER=sqlite3
+      - MINDOC_DB_DATABASE=./database/mindoc.db
+      - MINDOC_CACHE=true
+      - MINDOC_CACHE_PROVIDER=file
+      - MINDOC_ENABLE_EXPORT=false
+      - MINDOC_ENABLE_MAIL=true
+      - MINDOC_SMTP_USER_NAME=mindoc@test.com
+      - MINDOC_SMTP_HOST=smtp.exmail.qq.com
+      - MINDOC_SMTP_PASSWORD=123456
+      - MINDOC_SMTP_PORT=465
+      - MINDOC_FORM_USERNAME=mindoc@test.com
+      - MINDOC_MAIL_SECURE=SSL
+    dns:
+      - 223.5.5.5
+      - 223.6.6.6

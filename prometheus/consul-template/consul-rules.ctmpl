@@ -1,0 +1,7 @@
+groups:
+{{ range $key, $pairs := tree "prometheus/nn1/alerts" | byKey }}
+- name: {{ $key }}
+  rules:
+{{ range $pair := $pairs }}  - alert: {{ .Key }}
+{{ .Value | indent 4 }}
+{{ end }}{{ end }}

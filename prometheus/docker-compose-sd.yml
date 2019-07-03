@@ -1,0 +1,149 @@
+version: '3.2'
+
+volumes:
+  prometheus_data: {}
+  alertmanager_data: {}
+  grafana_data: {}
+  consul_data: {}
+
+networks:
+  monitor:
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.10.0
+    container_name: prometheus
+    hostname: prometheus
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - prometheus_data:/prometheus
+      - ./prometheus/etc:/etc/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus-sd.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=180d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-admin-api'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090:9090
+    networks:
+      - monitor
+    restart: always
+
+  node-exporter:
+    image: prom/node-exporter:v0.18.0
+    container_name: node-exporter
+    hostname: node-exporter
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command: 
+      - '--path.procfs=/host/proc' 
+      - '--path.sysfs=/host/sys'
+      - --collector.filesystem.ignored-mount-points
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    ports:
+      - 9100:9100
+    networks:
+      - monitor
+    restart: always
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.14.0
+    container_name: blackbox
+    hostname: blackbox
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "9115:9115"
+    networks:
+      - monitor
+    restart: always
+
+  alertmanager:
+    image: prom/alertmanager:v0.17.0
+    container_name: alertmanager
+    hostname: alertmanager
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - alertmanager_data:/alertmanager
+      - ./alertmanager/etc:/etc/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    ports:
+      - 9093:9093
+    networks:
+      - monitor
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    hostname: grafana
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - grafana_data:/var/lib/grafana
+      - ./grafana/datasources:/etc/grafana/datasources
+      - ./grafana/dashboards:/etc/grafana/dashboards
+      - ./grafana/setup.sh:/setup.sh
+    entrypoint: /setup.sh
+    environment:
+      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - "GF_INSTALL_PLUGINS=grafana-piechart-panel"
+    restart: always
+    ports:
+      - 3000:3000
+    networks:
+      - monitor
+  
+  consul:
+    image: consul:latest
+    container_name: consul
+    hostname: consul
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - consul_data:/consul/data
+    ports:
+      - 8500:8500
+    restart: always
+    networks:
+      - monitor
+
+  consul-template:
+    image: hashicorp/consul-template:alpine
+    container_name: consul-template
+    hostname: consul-template
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./consul-template/consul-rules.ctmpl:/consul-rules.ctmpl
+      - ./prometheus/etc/alerts:/alerts
+    command:
+      - '-consul-addr=consul:8500'
+      - '-template=/consul-rules.ctmpl:/alerts/consul-rules.rules:curl -X POST http://prometheus:9090/-/reload'
+      - '-log-level=info'
+    restart: always
+    networks:
+      - monitor
+
+
+# target consul
+# curl -X PUT -d '{"id": "192.168.77.131","name": "node-exporter","address": "192.168.77.131","port": 9100,"tags": ["dev","prometheus"],"checks": [{"http": "http://192.168.77.131:9100/","interval": "5s"}]}' http://localhost:8500/v1/agent/service/register
+#
+# rules consul
+# promtheus/[namespace]/alerts/[group]/[name]
+# promtheus/nn1/alerts/test/hell
+# curl -XPUT -d 'expr: up == 0
+# for: 5m
+# labels:
+#   severity: warning
+# annotations:
+#   summary: "Exporter down (instance {{ $labels.instance }})"
+#   description: "Prometheus exporter down\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"'  http://localhost:8500/v1/kv/prometheus/nn1/alerts/test/test02?dc=dc1
+#

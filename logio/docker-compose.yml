@@ -1,0 +1,27 @@
+version: '3'
+services:
+  logio_server:
+    container_name: logio_server
+    hostname: logio_server
+    image: lework/logio:0.3.4
+    network_mode: docker
+    volumes:
+      - "./logio_data:/root/.log.io"
+      - "./logio_log:/var/log"
+    ports:
+      - "28778:28778"
+    restart: always
+
+  logio_harvester:
+    container_name: logio_harvester
+    hostname: logio_harvester
+    image: lework/logio:0.3.4
+    network_mode: docker
+    volumes:
+      - "./logio_data:/root/.log.io"
+      - "./logio_log:/var/log"
+    depends_on:
+      - logio_server
+    environment:
+      - LOGIO_SERVICE=harvester
+    restart: always

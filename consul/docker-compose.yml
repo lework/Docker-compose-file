@@ -1,0 +1,15 @@
+version: '3'
+services:
+  consul:
+    image: consul:latest
+    container_name: consul
+    hostname: consul
+    volumes:
+      - "./consul_data:/consul/data"
+      - "/etc/localtime:/etc/localtime:ro"
+    ports:
+      - "8300:8300"
+      - "8400:8400"
+      - "8500:8500"
+      - "53:53"
+    restart: always

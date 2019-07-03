@@ -1,0 +1,11 @@
+version: '3'
+services:
+ registry:
+   image: registry:2.7.1
+   container_name: registry
+   ports:
+     - 5000:5000
+   volumes:
+     - ./registry_data:/var/lib/registry
+     - /etc/localtime:/etc/localtime
+   restart: always

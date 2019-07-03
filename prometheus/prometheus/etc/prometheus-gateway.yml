@@ -1,0 +1,72 @@
+# global config
+global:
+  scrape_interval:     15s # 拉取targets的默认时间间隔,默认是1m.
+  scrape_timeout:      10s # 拉去targets的默认超时时间, 默认10s
+  evaluation_interval: 15s # 执行rules的时间间隔,默认是1m.
+
+  external_labels:
+    monitor: 'dev-monitor'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - "alertmanager:9093"
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "alerts/*.rules"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    scrape_interval: 5s
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+    static_configs:
+    - targets: ['localhost:9090']
+      labels:
+        group: 'prometheus'
+
+  - job_name: 'alertmanager'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['alertmanager:9093']
+        labels:
+          group: 'prometheus'
+
+  - job_name: 'node-exporter'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          group: 'prod'
+
+  - job_name: 'blackbox'
+    scrape_interval: 5s
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://prometheus:9090
+        - http://node-exporter:9100
+        - http://alertmanager:9093
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  - job_name: pushgateway
+    scrape_interval: 2s
+    static_configs:
+      - targets: ['pushgateway:9091']
+        labels:
+          group: pushgateway

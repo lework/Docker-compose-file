@@ -1,0 +1,70 @@
+version: '3'
+services:
+  sentry:
+    container_name: sentry
+    image: sentry
+    env_file:
+      - .env
+    ports:
+      - '9900:9000'
+    depends_on:
+      - db
+      - redis
+    tty: true
+    stdin_open: true
+    volumes:
+      - sentry-data:/var/lib/sentry/files
+      - localtime:/etc/localtime
+  cron:
+    container_name: sentry-cron
+    image: sentry
+    command: run cron
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - sentry-data:/var/lib/sentry/files
+      - localtime:/etc/localtime
+  worker:
+    container_name: sentry-worker
+    image: sentry
+    command: run worker
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - sentry-data:/var/lib/sentry/files
+      - localtime:/etc/localtime
+
+  redis:
+    container_name: sentry-redis
+    image: redis
+    volumes:
+      - redis-data:/data
+      - localtime:/etc/localtime
+    ports:
+      - '6380:6379'
+  db:
+    container_name: sentry-postgres
+    image: postgres
+    environment:
+      POSTGRES_USER: sentry
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - localtime:/etc/localtime
+    ports:
+      - '5432:5432'
+#  smtp:
+#    restart: unless-stopped
+#    image: tianon/exim4
+
+volumes:
+  redis-data: ./redis-data
+  pg-data: ./pg-data
+  sentry-data: ./sentry-data
+  localtime: /etc/localtime
