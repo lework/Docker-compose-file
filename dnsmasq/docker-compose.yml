@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  dnsmasq:
+    image: andyshinn/dnsmasq
+    container_name: dnsmasq
+    cap_add:
+      - NET_ADMIN
+    command: --log-facility=-
+    volumes:
+      - ./dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf
+      - ./dnsmasq/dnsmasq.d:/etc/dnsmasq.d
+      - /etc/localtime:/etc/localtime:ro
