@@ -1,0 +1,64 @@
+version: '2'
+
+services:
+  rocketchat:
+    image: rocket.chat:latest
+    command: bash -c 'for i in `seq 1 30`; do node main.js && s=$$? && break || s=$$?; echo "Tried $$i times. Waiting 5 secs..."; sleep 5; done; (exit $$s)'
+    restart: unless-stopped
+    volumes:
+      - ./uploads:/app/uploads
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - PORT=3000
+      - ROOT_URL=http://192.168.77.131
+      - MONGO_URL=mongodb://mongo:27017/rocketchat
+      - MONGO_OPLOG_URL=mongodb://mongo:27017/local
+      - Accounts_UseDNSDomainCheck=True
+      - TZ=Asia/Shanghai
+    depends_on:
+      - mongo
+    ports:
+      - 3000:3000
+
+  mongo:
+    image: mongo
+    restart: unless-stopped
+    volumes:
+     - ./data/db:/data/db
+     - ./data/dump:/dump
+     - /etc/localtime:/etc/localtime:ro
+    environment:
+     - TZ=Asia/Shanghai
+    command: mongod --smallfiles --oplogSize 128 --replSet rs0 --storageEngine=mmapv1
+
+  # this container's job is just run the command to initialize the replica set.
+  # it will run the command and remove himself (it will not stay running)
+  mongo-init-replica:
+    image: mongo
+    command: 'bash -c "for i in `seq 1 30`; do mongo mongo/rocketchat --eval \"rs.initiate({ _id: ''rs0'', members: [ { _id: 0, host: ''localhost:27017'' } ]})\" && s=$$? && break || s=$$?; echo \"Tried $$i times. Waiting 5 secs...\"; sleep 5; done; (exit $$s)"'
+    depends_on:
+      - mongo
+
+  # hubot, the popular chatbot (add the bot user first and change the password before starting this image)
+  hubot:
+    image: rocketchat/hubot-rocketchat:latest
+    restart: unless-stopped
+    environment:
+      - ROCKETCHAT_URL=192.168.77.131:3000
+      - ROCKETCHAT_ROOM=''
+      - LISTEN_ON_ALL_PUBLIC=true
+      - ROCKETCHAT_USER=hubot
+      - ROCKETCHAT_PASSWORD=123456
+      - BOT_NAME=bot
+      - TZ=Asia/Shanghai
+  # you can add more scripts as you'd like here, they need to be installable by npm
+      - EXTERNAL_SCRIPTS=hubot-help,hubot-seen,hubot-links,hubot-diagnostics,hubot-script-shellcmd
+    depends_on:
+      - rocketchat
+    volumes:
+      - ./scripts:/home/hubot/scripts
+      - ./bash:/home/hubot/bash
+      - /etc/localtime:/etc/localtime:ro
+  # this is used to expose the hubot port for notifications on the host on port 3001, e.g. for hubot-jenkins-notifier
+    ports:
+      - 3001:8080
