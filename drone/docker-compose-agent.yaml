@@ -1,0 +1,17 @@
+version: '3'
+services:
+ drone-agent:
+   container_name: drone-agent
+   image: drone/agent:1.2.3
+   volumes:
+     - /var/run/docker.sock:/var/run/docker.sock
+     - /etc/localtime:/etc/localtime
+   environment:
+     - DRONE_RPC_HOST=192.168.77.132:80
+     - DRONE_RPC_PROTO=http
+     - DRONE_RPC_SECRET=757e584744898089331ec13bbe2b19f4
+     - DRONE_RUNNER_NAME=drone-agent001
+     - DRONE_RUNNER_CAPACITY=2
+     - DRONE_LOGS_DEBUG=true
+     - DRONE_RPC_DEBUG=true
+   restart: always

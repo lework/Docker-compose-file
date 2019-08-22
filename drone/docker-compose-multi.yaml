@@ -1,0 +1,70 @@
+version: '3'
+services:
+ drone-server:
+   container_name: drone-server
+   image: drone/drone:1.2.3
+   ports:
+     - 80:80
+     - 443
+   volumes:
+     - ./drone_data:/data
+     - /var/run/docker.sock:/var/run/docker.sock
+     - /etc/localtime:/etc/localtime
+   environment:
+     - DRONE_SERVER_HOST=192.168.77.132
+     - DRONE_SERVER_PROTO=http
+     - DRONE_TLS_AUTOCERT=false
+     - DRONE_LOGS_DEBUG=true
+     - DRONE_GIT_ALWAYS_AUTH=false
+     - DRONE_GOGS_SERVER=http://gogs:3000
+     - DRONE_USER_CREATE=username:root,admin:true
+     - DRONE_AGENTS_ENABLED=true
+     - DRONE_RPC_SECRET=757e584744898089331ec13bbe2b19f4
+   restart: always
+
+ drone-agent:
+   container_name: drone-agent
+   image: drone/agent:1.2.3
+   volumes:
+     - /var/run/docker.sock:/var/run/docker.sock
+     - /etc/localtime:/etc/localtime
+   environment:
+     - DRONE_RPC_HOST=drone-server:80
+     - DRONE_RPC_PROTO=http
+     - DRONE_RPC_SECRET=757e584744898089331ec13bbe2b19f4
+     - DRONE_RUNNER_NAME=drone-agent001
+     - DRONE_RUNNER_CAPACITY=2
+     - DRONE_LOGS_DEBUG=true
+     - DRONE_RPC_DEBUG=true
+   restart: always
+
+ drone-cli:
+   container_name: drone-cli
+   image: drone/cli:alpine
+   entrypoint: ["/bin/sh", "-c"]
+   command: ["sleep 3650d"]
+   volumes:
+     - /etc/localtime:/etc/localtime
+   environment:
+     - DRONE_SERVER=http://drone-server
+     - DRONE_TOKEN=9JFtB5oRaKLS04FjRp92aLG7NHmfwHfg
+   
+ gogs:
+   container_name: gogs
+   image: gogs/gogs:0.11.91
+   volumes:
+     - ./gogs_data:/data
+     - /etc/localtime:/etc/localtime
+   ports:
+     - 3000:3000
+   restart: always
+
+ registry:
+   image: registry:2.7.1
+   container_name: registry
+   ports:
+     - 5000:5000
+   volumes:
+     - ./registry_data:/var/lib/registry
+     - /etc/localtime:/etc/localtime
+   restart: always

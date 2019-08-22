@@ -2,7 +2,7 @@ version: '3'
 services:
  drone-server:
    container_name: drone-server
-   image: drone/drone:1.2.1
+   image: drone/drone:1.2.3
    ports:
      - 80:80
      - 443
@@ -11,19 +11,19 @@ services:
      - /var/run/docker.sock:/var/run/docker.sock
      - /etc/localtime:/etc/localtime
    environment:
+     - DRONE_SERVER_HOST=192.168.77.134
+     - DRONE_SERVER_PROTO=http
+     - DRONE_TLS_AUTOCERT=false
      - DRONE_LOGS_DEBUG=true
      - DRONE_GIT_ALWAYS_AUTH=false
      - DRONE_GOGS_SERVER=http://gogs:3000
      - DRONE_RUNNER_CAPACITY=2
-     - DRONE_SERVER_HOST=192.168.77.134
-     - DRONE_SERVER_PROTO=http
-     - DRONE_TLS_AUTOCERT=false
      - DRONE_USER_CREATE=username:root,admin:true
    restart: always
 
  gogs:
    container_name: gogs
-   image: gogs/gogs:0.11.86
+   image: gogs/gogs:0.11.91
    volumes:
      - ./gogs_data:/data
      - /etc/localtime:/etc/localtime
