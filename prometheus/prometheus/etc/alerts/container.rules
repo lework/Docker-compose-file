@@ -1,0 +1,51 @@
+groups:
+- name: container
+  rules:
+  - alert: high_cpu_usage_on_container
+    expr: sum(rate(container_cpu_usage_seconds_total{name=~".+"}[5m])) by (name, host) * 100 > 70
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "HIGH CPU USAGE WARNING: CONTAINER '{{ $labels.name }}' on '{{ $labels.host }}'"
+      description: "{{ $labels.name }} is using a LOT of CPU. CPU usage is {{ humanize $value}}."
+  - alert: high_memory_usage_on_container
+    expr: sum(rate(container_memory_usage_bytes{name=~".+"}[5m])) by (name, host) / 1024 / 1024 / 1024 > 2
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "HIGH MEMORY USAGE WARNING: CONTAINER '{{ $labels.name }}' on '{{ $labels.host }}'"
+      description: "{{ $labels.name }} is a LOT of memory. Memory consumption of {{ $labels.name }} is at {{ humanize $value}}."
+  - alert: high_fs_usage_on_container
+    expr: sum(container_fs_usage_bytes{image!=""}) by (name) / 1024 / 1024 / 1024 > 2
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "HIGH FS USAGE WARNING: CONTAINER '{{ $labels.name }}''"
+      description: "{{ $labels.name }} is using a LOT of FS. FS usage is {{ humanize $value}}%."
+  - alert: high_network_receive_on_container
+    expr: sum(rate(container_network_receive_bytes_total{name!= ''}[5m])) by (name, host) / 1024 / 1024 > 2
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "NETWORK RECEIVE WARNING: CONTAINER '{{ $labels.name }}' on '{{ $labels.host }}'"
+      description: "{{ $labels.name }} is using a LOT of NETWORK RECEIVE. NETWORK RECEIVE is {{ humanize $value}}%."
+  - alert: high_network_transmit_on_container
+    expr: sum(rate(container_network_transmit_bytes_total{name!= ''}[5m])) by (name, host) / 1024 / 1024 > 2
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "NETWORK TRANSMIT WARNING: CONTAINER '{{ $labels.name }}' on '{{ $labels.host }}'"
+      description: "{{ $labels.name }} is using a LOT of NETWORK TRANSMIT. NETWORK TRANSMIT is {{ humanize $value}}%."
+  - alert: container_down
+    expr: absent(container_memory_usage_bytes{name=~".+"})
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "{{ $labels.name }} down on '{{ $labels.host }}'"
+      description: "{{ $labels.name }} container is down for more than 30 seconds."
