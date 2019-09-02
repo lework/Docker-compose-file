@@ -1,0 +1,18 @@
+version: '3'
+services:
+  envoy:
+    container_name: envoy
+    image: envoyproxy/envoy-alpine
+    ports:
+      - 9901:9901
+      - 10000:10000
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - ./envoy.yaml:/etc/envoy/envoy.yaml 
+
+  nginx:
+    container_name: nginx
+    image: nginx:alpine
+    network_mode: service:envoy
+    depends_on:
+      - envoy
