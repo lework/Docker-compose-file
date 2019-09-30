@@ -1,0 +1,38 @@
+# global config
+global:
+  scrape_interval:     15s # 拉取targets的默认时间间隔,默认是1m.
+  scrape_timeout:      10s # 拉去targets的默认超时时间, 默认10s
+  evaluation_interval: 15s # 执行rules的时间间隔,默认是1m.
+
+  external_labels:
+    monitor: 'dev-monitor'
+
+# Alertmanager configuration
+alerting:
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "alerts/*.rules"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    scrape_interval: 5s
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+    static_configs:
+    - targets: ['localhost:9090']
+      labels:
+        group: 'prometheus'
+  - job_name: 'm3db'
+    static_configs:
+    - targets: ['m3db:7203']
+remote_read:
+  - url: "http://m3db:7201/api/v1/prom/remote/read"
+    # To test reading even when local Prometheus has the data
+    read_recent: true
+remote_write:
+  - url: "http://m3db:7201/api/v1/prom/remote/write"

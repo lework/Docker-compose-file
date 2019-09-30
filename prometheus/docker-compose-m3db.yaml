@@ -1,0 +1,39 @@
+version: '3'
+
+volumes:
+  prometheus_data: {}
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.12.0
+    container_name: prometheus
+    hostname: prometheus
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - prometheus_data:/prometheus
+      - ./prometheus/etc/prometheus-m3db.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=1d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-admin-api'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090:9090
+    restart: always
+  m3db:
+    image: quay.io/m3db/m3dbnode:latest
+    container_name: m3db
+    hostname: m3db
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./m3db_data:/var/lib/m3db
+    cap_add:
+      - SYS_RESOURCE
+    ports:
+      - 7201:7201
+      - 7203:7203
+      - 9003:9003 
+    restart: always
