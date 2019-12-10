@@ -1,0 +1,56 @@
+groups:
+- name: rabbitmq-basic
+  rules:
+    - alert: OutOfMemory
+      expr: rabbitmq_process_resident_memory_bytes / rabbitmq_resident_memory_limit_bytes * 100 > 90
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Out of memory (instance {{ $labels.instance }})"
+        description: "Memory available for RabbmitMQ is low (< 10%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+    - alert: TooManyConnections
+      expr: rabbitmq_connections  > 1000
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Too many connections (instance {{ $labels.instance }})"
+        description: "RabbitMQ instance has too many connections (> 1000)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+        
+    - alert: OutOfSockets
+      expr: rabbitmq_process_open_tcp_sockets / rabbitmq_process_max_tcp_sockets * 100 > 90
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Out of Sockets (instance {{ $labels.instance }})"
+        description: "Sockets available for RabbmitMQ is low (< 10%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+    
+    - alert: OutOfOpenFile
+      expr: rabbitmq_process_open_fds  / rabbitmq_process_max_fds  * 100 > 90
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Out of Open file (instance {{ $labels.instance }})"
+        description: "Open file available for RabbmitMQ is low (< 10%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+    
+    - alert: OutOfProcesses
+      expr: rabbitmq_erlang_processes_used  / rabbitmq_erlang_processes_limit  * 100 > 90
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Out of Processes (instance {{ $labels.instance }})"
+        description: "Processes available for RabbmitMQ is low (< 10%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+- name: rabbitmq-queue
+  rules:
+    - alert: TooManyMessagesInQueue
+      expr: rabbitmq_queue_messages_ready{queue="my-queue"} > 1000
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Too many messages in queue (instance {{ $labels.instance }})"
+        description: "Queue is filling up (> 1000 msgs)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"

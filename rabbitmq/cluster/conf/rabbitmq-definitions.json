@@ -1,0 +1,78 @@
+{
+  "global_parameters": [
+    {"name": "cluster_name", "value": "rabbitmq-cluster"}
+  ],
+  "permissions": [
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "/",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "admin",
+      "vhost": "/",
+      "write": ".*"
+    }
+  ],
+  "policies": [
+    {
+      "apply-to": "queues",
+      "definition": {"ha-mode": "all"},
+      "name": "all",
+      "pattern": "all.*",
+      "priority": 0,
+      "vhost": "/"
+    },
+    {
+      "apply-to": "queues",
+      "definition": {"ha-mode": "exactly", "ha-params": 1},
+      "name": "ha1",
+      "pattern": "ha1.*",
+      "priority": 0,
+      "vhost": "/"
+    },
+    {
+      "apply-to": "queues",
+      "definition": {"ha-mode": "exactly", "ha-params": 2},
+      "name": "ha2",
+      "pattern": "ha2.*",
+      "priority": 0,
+      "vhost": "/"
+    },
+    {
+      "apply-to": "queues",
+      "definition": {"ha-mode": "exactly", "ha-params": 3, "ha-sync-mode":"automatic"},
+      "name": "ha3",
+      "pattern": "ha3.*",
+      "priority": 0,
+      "vhost": "/"
+    },
+     {
+      "apply-to": "queues",
+      "definition": {"ha-mode": "nodes", "ha-params": ["rabbit@rmq1","rabbit@rmq2"], "ha-sync-mode":"automatic"},
+      "name": "nodes",
+      "pattern": "nodes.*",
+      "priority": 0,
+      "vhost": "/"
+    }
+  ],
+  "users": [
+    {
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "name": "guest",
+      "password_hash": "hENva+fxJ7gnmaBK/WhwNHOYbvB53/QjNcqhtF4KqF7p21+x",
+      "tags": "administrator"
+    },
+    {
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "name": "admin",
+      "password_hash": "S4dp3Z60PxZM18Y9Ak5IVLn5TfRqDkSkuNQCkdWmRXXQ/ihU",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [{"name": "/"}]
+}

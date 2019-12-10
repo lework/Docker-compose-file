@@ -1,0 +1,37 @@
+version: "3"
+
+networks:
+  rabbitmq:
+  
+services:
+  rabbitmq: 
+    image: rabbitmq:3.8.2-management
+    hostname: rabbitmq
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_ERLANG_COOKIE: rabbitmq-cookie
+      #RABBITMQ_DEFAULT_USER: "admin"
+      #RABBITMQ_DEFAULT_PASS: "admin"
+      #RABBITMQ_DEFAULT_VHOST: "/"
+    volumes:
+      - ./single/conf/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ./single/conf/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./single/conf/rabbitmq-definitions.json:/etc/rabbitmq/rabbitmq-definitions.json:ro
+      - ./single/data:/var/lib/rabbitmq
+    ports:
+      - "4369:4369"
+      - "5671:5671"
+      - "5672:5672"
+      - "15671:15671"
+      - "15672:15672"
+      - "25672:25672"
+      - "15692:15692"
+    networks:
+      - rabbitmq
+    cap_add:
+      - ALL
+    ulimits:
+      nofile:
+        soft: "2000"
+        hard: "2000"
+    restart: always

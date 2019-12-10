@@ -1,0 +1,36 @@
+{
+  "global_parameters": [
+    {"name": "cluster_name", "value": "rabbitmq-sigle"}
+  ],
+  "permissions": [
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "guest",
+      "vhost": "/",
+      "write": ".*"
+    },
+    {
+      "configure": ".*",
+      "read": ".*",
+      "user": "admin",
+      "vhost": "/",
+      "write": ".*"
+    }
+  ],
+  "users": [
+    {
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "name": "guest",
+      "password_hash": "hENva+fxJ7gnmaBK/WhwNHOYbvB53/QjNcqhtF4KqF7p21+x",
+      "tags": "administrator"
+    },
+    {
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "name": "admin",
+      "password_hash": "S4dp3Z60PxZM18Y9Ak5IVLn5TfRqDkSkuNQCkdWmRXXQ/ihU",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [{"name": "/"}]
+}

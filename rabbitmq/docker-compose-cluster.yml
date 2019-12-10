@@ -1,0 +1,45 @@
+version: "3"
+
+networks:
+  rabbitmq:
+  
+services:
+  rmq0: &rabbitmq 
+    image: rabbitmq:3.8.2-management
+    hostname: rmq0
+    container_name: rmq0
+    environment:
+      RABBITMQ_ERLANG_COOKIE: rabbitmq-cluster-cookie
+    volumes:
+      - ./cluster/conf/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ./cluster/conf/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./cluster/conf/rabbitmq-definitions.json:/etc/rabbitmq/rabbitmq-definitions.json:ro
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+      - "15693:15692"
+    networks:
+      - rabbitmq
+    cap_add:
+      - ALL
+    ulimits:
+      nofile:
+        soft: "2000"
+        hard: "2000"
+    restart: always
+  rmq1:
+    << : *rabbitmq
+    hostname: rmq1
+    container_name: rmq1
+    ports:
+      - "5674:5672"
+      - "15674:15672"
+      - "15694:15692"
+  rmq2:
+    << : *rabbitmq
+    hostname: rmq2
+    container_name: rmq2
+    ports:
+      - "5675:5672"
+      - "15675:15672"
+      - "15695:15692"

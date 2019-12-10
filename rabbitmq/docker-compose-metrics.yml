@@ -1,0 +1,63 @@
+version: "3"
+
+networks:
+  rabbitmq: 
+
+volumes:
+  rabbitmq-prometheus_prometheus:
+  rabbitmq-prometheus_grafana:
+
+services:
+  grafana:
+    image: grafana/grafana:6.4.5
+    ports:
+      - "3000:3000"
+    networks:
+      - "rabbitmq"
+    volumes:
+      - rabbitmq-prometheus_grafana:/var/lib/grafana
+      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/rabbitmq.yaml
+      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/prometheus.yaml
+      - ./grafana/dashboards:/dashboards
+    environment:
+      GF_INSTALL_PLUGINS: "flant-statusmap-panel,grafana-piechart-panel"
+    restart: always
+  prometheus:
+    image: prom/prometheus:v2.14.0
+    networks:
+      - "rabbitmq"
+    ports:
+      - "9090:9090"
+    volumes:
+      - rabbitmq-prometheus_prometheus:/prometheus
+      - ./prometheus/etc:/etc/prometheus
+    restart: always
+  node-exporter:
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    expose:
+      - 9100
+    image: prom/node-exporter:v0.18.1
+    networks:
+      - "rabbitmq"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    restart: always
+  cadvisor:
+    expose:
+      - 8080
+    image: google/cadvisor:v0.33.0
+    networks:
+      - "rabbitmq"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    restart: always
+
