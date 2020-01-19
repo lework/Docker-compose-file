@@ -1,0 +1,68 @@
+version: '3'
+
+services:
+  redis-cluster0: &cluster
+    container_name: redis-cluster0
+    image: redis:5.0.7
+    volumes:
+      - "./redis_cluster_7000_data:/data"
+      - "./cluster/cluster.conf:/data/redis.conf"
+      - "/etc/localtime:/etc/localtime"
+    command: ['/data/redis.conf','--port 7000']
+    network_mode: host
+    restart: always
+  redis-cluster1:
+    <<: *cluster
+    container_name: redis-cluster1
+    volumes:
+      - "./redis_cluster_7001_data:/data"
+      - "./cluster/cluster.conf:/data/redis.conf"
+      - "/etc/localtime:/etc/localtime"
+    command: ['/data/redis.conf','--port 7001']
+  redis-cluster2:
+    <<: *cluster
+    container_name: redis-cluster2
+    volumes:
+      - "./redis_cluster_7002_data:/data"
+      - "./cluster/cluster.conf:/data/redis.conf"
+      - "/etc/localtime:/etc/localtime"
+    command: ['/data/redis.conf','--port 7002']
+  redis-cluster10:
+    <<: *cluster
+    container_name: redis-cluster10
+    volumes:
+      - "./redis_cluster_7010_data:/data"
+      - "./cluster/cluster.conf:/data/redis.conf"
+      - "/etc/localtime:/etc/localtime"
+    command: ['/data/redis.conf','--port 7010']
+  redis-cluster11:
+    <<: *cluster
+    container_name: redis-cluster11
+    volumes:
+      - "./redis_cluster_7011_data:/data"
+      - "./cluster/cluster.conf:/data/redis.conf"
+      - "/etc/localtime:/etc/localtime"
+    command: ['/data/redis.conf','--port 7011']
+  redis-cluster12:
+    <<: *cluster
+    container_name: redis-cluster12
+    volumes:
+      - "./redis_cluster_7012_data:/data"
+      - "./cluster/cluster.conf:/data/redis.conf"
+      - "/etc/localtime:/etc/localtime"
+    command: ['/data/redis.conf','--port 7012']
+  redis-cluster-init:
+    container_name: redis-cluster-init
+    image: redis:5.0.7
+    network_mode: host
+    depends_on:
+      - redis-cluster0
+      - redis-cluster1
+      - redis-cluster2
+      - redis-cluster10
+      - redis-cluster11
+      - redis-cluster12
+    entrypoint:
+      - "/bin/bash"
+      - "-c"
+      - "sleep 5; redis-cli -a 123456 --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7010 127.0.0.1:7011 127.0.0.1:7012 --cluster-replicas 1 --cluster-yes"

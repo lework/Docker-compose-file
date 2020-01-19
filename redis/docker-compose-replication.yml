@@ -1,0 +1,51 @@
+version: '3'
+
+networks:
+  redis:
+
+services:
+  redis-master:
+    container_name: redis-master
+    image: redis:5.0.7
+    volumes:
+      - "./redis_rep_master_data:/data"
+      - "/etc/localtime:/etc/localtime"
+    ports:
+      - "6379:6379"
+    restart: always
+    command: [
+      '--port 6379',
+      '--requirepass 123456',
+      '--maxclients 1000',
+      '--maxmemory 256mb',
+      '--maxmemory-policy volatile-ttl',
+      '--appendonly yes',
+      '--aof-use-rdb-preamble yes' 
+    ]
+    networks:
+      - redis
+
+  redis-slave:
+    container_name: redis-slave
+    image: redis:5.0.7
+    volumes:
+      - "./redis_rep_slave_data:/data"
+      - "/etc/localtime:/etc/localtime"
+    ports:
+      - "16379:16379"
+    restart: always
+    command: [
+      '--port 16379',
+      '--requirepass 123456',
+      '--masterauth 123456',
+      '--replicaof redis-master 6379',
+      '--maxclients 1000',
+      '--maxmemory 256mb',
+      '--maxmemory-policy volatile-ttl',
+      '--appendonly yes',
+      '--aof-use-rdb-preamble yes' 
+    ]
+    depends_on:
+      - redis-master
+    networks:
+      - redis

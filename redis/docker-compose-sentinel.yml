@@ -1,0 +1,75 @@
+version: '3'
+
+services:
+  redis-master:
+    container_name: redis-master
+    image: redis:5.0.7
+    volumes:
+      - "./redis_sentinel_master_data:/data"
+      - "./sentinel/master.conf:/data/redis.conf"
+      - "/etc/localtime:/etc/localtime"
+    command: ['/data/redis.conf','--port 6379']
+    network_mode: host
+    restart: always
+
+  redis-slave1: &slave
+    container_name: redis-slave1
+    image: redis:5.0.7
+    volumes:
+      - "./redis_sentinel_slave1_data:/data"
+      - "./sentinel/slave1.conf:/data/redis.conf"
+      - "/etc/localtime:/etc/localtime"
+    command: ['/data/redis.conf','--port 6380']
+    network_mode: host
+    restart: always
+    depends_on:
+      - redis-master
+
+  redis-slave2:
+    <<: *slave
+    container_name: redis-slave2
+    volumes:
+      - "./redis_sentinel_slave2_data:/data"
+      - "./sentinel/slave2.conf:/data/redis.conf"
+      - "/etc/localtime:/etc/localtime"
+    command: ['/data/redis.conf','--port 6381']
+
+  redis-sentinel1: &sentinel
+    container_name: redis-sentinel1
+    image: redis:5.0.7
+    volumes:
+      - "/etc/localtime:/etc/localtime"
+      - "./sentinel/sentinel1.conf:/data/sentinel.conf"
+    command: [
+      '/data/sentinel.conf',
+      '--sentinel',
+      '--port 16379'
+    ]
+    network_mode: host
+    restart: always
+    depends_on:
+      - redis-master
+      
+  redis-sentinel2: 
+    <<: *sentinel
+    container_name: redis-sentinel2
+    volumes:
+      - "/etc/localtime:/etc/localtime"
+      - "./sentinel/sentinel2.conf:/data/sentinel.conf"
+    command: [
+      '/data/sentinel.conf',
+      '--sentinel',
+      '--port 16381'
+    ]
+
+  redis-sentinel3: 
+    <<: *sentinel
+    container_name: redis-sentinel3
+    volumes:
+      - "/etc/localtime:/etc/localtime"
+      - "./sentinel/sentinel3.conf:/data/sentinel.conf"
+    command: [
+      '/data/sentinel.conf',
+      '--sentinel',
+      '--port 16382'
+    ]
