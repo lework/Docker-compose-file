@@ -1,0 +1,41 @@
+version: '3.2'
+
+networks:
+  monitor:
+
+services:
+  alertmanager1: &alertmanager
+    image: prom/alertmanager:v0.20.0
+    container_name: alertmanager1
+    hostname: alertmanager1
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./alertmanager/etc:/etc/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--cluster.listen-address=0.0.0.0:9094'
+    ports:
+      - 9093:9093
+    networks:
+      - monitor
+    restart: always
+  alertmanager2:
+    <<: *alertmanager
+    container_name: alertmanager2
+    hostname: alertmanager2
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--cluster.listen-address=0.0.0.0:9094'
+      - '--cluster.peer=alertmanager1:9094'
+    ports:
+      - 9094:9093
+  alertmanager3:
+    <<: *alertmanager
+    container_name: alertmanager3
+    hostname: alertmanager3
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--cluster.listen-address=0.0.0.0:9094'
+      - '--cluster.peer=alertmanager1:9094'
+    ports:
+      - 9095:9093

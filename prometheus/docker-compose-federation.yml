@@ -1,0 +1,98 @@
+version: '3.2'
+
+volumes:
+  prometheus_data: {}
+  alertmanager_data: {}
+
+networks:
+  monitor:
+
+services:
+  prometheus-main:
+    image: prom/prometheus:v2.16.0
+    container_name: prometheus-main
+    hostname: prometheus
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - prometheus_data:/prometheus
+      - ./prometheus/etc:/etc/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus-main.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-admin-api'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090:9090
+    networks:
+      - monitor
+    restart: always
+  prometheus-work1:
+    image: prom/prometheus:v2.16.0
+    container_name: prometheus-work1
+    hostname: prometheus-work1
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./prometheus/etc:/etc/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus-work1.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-admin-api'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9091:9090
+    networks:
+      - monitor
+    restart: always
+
+  prometheus-work0:
+    image: prom/prometheus:v2.16.0
+    container_name: prometheus-work2
+    hostname: prometheus-work2
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./prometheus/etc:/etc/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus-work2.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-admin-api'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9092:9090
+    networks:
+      - monitor
+    restart: always
+    
+  node1: &node
+    container_name: node1
+    hostname: node1 
+    image: prom/node-exporter:v0.18.1
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command: 
+      - '--path.procfs=/host/proc' 
+      - '--path.sysfs=/host/sys'
+      - --collector.filesystem.ignored-mount-points
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    networks:
+      - monitor
+    restart: always
+  node2:
+    <<: *node
+    container_name: node2
+    hostname: node2
+  node3:
+    <<: *node
+    container_name: node3
+    hostname: node3
