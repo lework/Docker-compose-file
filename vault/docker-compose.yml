@@ -1,0 +1,70 @@
+version: '3.8'
+
+networks:
+  vault:
+
+services:
+  consul:
+    image: consul:latest
+    container_name: consul
+    restart: on-failure
+    ports:
+      - "8500:8500"
+    volumes:
+      - ./consul/config:/consul/config
+      - ./consul/data:/consul/data
+    command: "agent -config-dir=/consul/config"
+    networks:
+      - vault
+
+  consul_init:
+    init: true
+    image: consul:latest
+    container_name: consul_init
+    volumes:
+      - ./vault/config:/vault/config
+      - ./consul:/consul
+    entrypoint: /consul/config/init.sh
+    environment:
+      - CONSUL_HTTP_ADDR=consul:8500
+    depends_on:
+      - consul
+    networks:
+      - vault
+
+  vault:
+    image: vault:latest
+    container_name: vault
+    restart: on-failure
+    ports:
+      - "8200:8200"
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - ./vault:/vault
+    environment:
+      - VAULT_ADDR=http://localhost:8200
+    entrypoint: /vault/entrypoint.sh
+    command: vault server -config=/vault/config/vault.hcl
+    depends_on:
+      - consul
+      - consul_init
+    networks:
+      - vault
+
+  vault_init:
+    init: true
+    image: vault:latest
+    container_name: vault_init
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - ./vault/config:/vault/config
+    environment:
+      - VAULT_ADDR=http://vault:8200
+    entrypoint: /vault/config/init.sh
+    depends_on:
+      - vault
+    networks:
+      - vault
+ 

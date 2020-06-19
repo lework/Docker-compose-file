@@ -1,15 +1,42 @@
 version: '3'
+
+networks:
+  cluster:
+
 services:
-  consul:
+
+  consul_c1: &consul-agent
     image: consul:latest
-    container_name: consul
-    hostname: consul
+    container_name: consul_c1
     volumes:
-      - "./consul_data:/consul/data"
-      - "/etc/localtime:/etc/localtime:ro"
+      - ./cluster/config:/consul/config:rw
+    networks:
+      - cluster
+    command: "agent -config-file=/consul/config/consul_c1.json"
+
+  consul_c2:
+    <<: *consul-agent
+    container_name: consul_c2
+    command: "agent -config-file=/consul/config/consul_c2.json"
+
+  consul_s1:
+    <<: *consul-agent
+    container_name: consul_s1
+    command: "agent -config-file=/consul/config/consul_s1.json"
+
+  consul_s2:
+    <<: *consul-agent
+    container_name: consul_s2
+    command: "agent -config-file=/consul/config/consul_s2.json"
+
+  consul_s3:
+    <<: *consul-agent
+    container_name: consul_s3
+    command: "agent -config-file=/consul/config/consul_s3.json"
+    volumes:
+      - ./cluster/config:/consul/config:rw
+      - ./cluster/data:/consul/data:rw
     ports:
-      - "8300:8300"
       - "8400:8400"
       - "8500:8500"
-      - "53:53"
-    restart: always
+      - "8600:8600"
