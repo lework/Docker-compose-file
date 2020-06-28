@@ -1,0 +1,86 @@
+version: '3'
+
+networks:
+  nomad:
+
+services:
+  consul_c: &consul-agent
+    image: consul:latest
+    container_name: consul_c
+    volumes:
+      - ./consul/config:/consul/config:rw
+    networks:
+      - nomad
+    command: "agent -config-file=/consul/config/client.json"
+
+  consul_s1:
+    <<: *consul-agent
+    container_name: consul_s1
+    command: "agent -config-file=/consul/config/server.json"
+
+  consul_s2:
+    <<: *consul-agent
+    container_name: consul_s2
+    command: "agent -config-file=/consul/config/server.json"
+
+  consul_s3:
+    <<: *consul-agent
+    container_name: consul_s3
+    command: "agent -config-file=/consul/config/server.json"
+    volumes:
+      - ./consul/config:/consul/config:rw
+      - ./consul/data:/consul/data:rw
+    ports:
+      - "8400:8400"
+      - "8500:8500"
+      - "8600:8600"
+
+  nomad_s1: &nomad-server
+    image: lework/nomad
+    build: .
+    container_name: nomad_s1
+    restart: on-failure
+    volumes:
+      - ./nomad/config:/nomad/config
+    command: "agent -config=/nomad/config/server"
+    networks:
+      - nomad
+    depends_on:
+      - consul_s1
+      - consul_s2
+      - consul_s3
+      - consul_c
+  nomad_s2:
+    <<: *nomad-server
+    container_name: nomad_s2
+  nomad_s3:
+    <<: *nomad-server
+    container_name: nomad_s3
+    volumes:
+      - ./nomad/config:/nomad/config:rw
+      - ./nomad/data:/nomad/data:rw
+    ports:
+      - "4646:4646"
+    depends_on:
+      - consul_s1
+      - consul_s2
+      - consul_s3
+      - consul_c
+  nomad_c1:
+    image: lework/nomad
+    container_name: nomad_c1
+    restart: on-failure
+    volumes:
+      - ./nomad/config:/nomad/config
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: "agent -config=/nomad/config/client"
+    privileged: true
+    network_mode: host
+    depends_on:
+      - consul_s1
+      - consul_s2
+      - consul_s3
+      - consul_c
+      - nomad_s1
+      - nomad_s2
+      - nomad_s3
