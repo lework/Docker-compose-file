@@ -1,0 +1,13 @@
+server.name: kibana
+server.host: "0.0.0.0"
+
+# Elasticsearch Connection
+elasticsearch.hosts: ${ELASTICSEARCH_HOSTS}
+
+#X-Pack security credentials
+elasticsearch.username: "${ELASTICSEARCH_USERNAME}"
+elasticsearch.password: "${ELASTICSEARCH_PASSWORD}"
+
+## Misc
+elasticsearch.requestTimeout: 90000
+monitoring.kibana.collection.enabled: false

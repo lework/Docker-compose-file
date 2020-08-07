@@ -1,0 +1,57 @@
+setup.template.settings:
+  index:
+    number_of_shards: 1
+    number_of_replicas: 0
+    codec: best_compression
+
+filebeat.inputs:
+- type: container
+  paths: 
+    - '/var/lib/docker/containers/*/*.log'
+
+filebeat.modules:
+- module: elasticsearch
+  server:
+    enabled: true
+    var.paths:
+      - /var/log/elasticsearch/*_server.json
+  gc:
+    enabled: true
+    var.paths:
+      - /var/log/elasticsearch/gc.log
+  audit:
+    enabled: true
+    var.paths:
+      - /var/log/elasticsearch/*_audit.json
+  slowlog:
+    enabled: true
+    var.paths:
+      - /var/log/elasticsearch/*_index_search_slowlog.json
+      - /var/log/elasticsearch/*_index_indexing_slowlog.json
+  deprecation:
+    enabled: true
+    var.paths:
+      - /var/log/elasticsearch/*_deprecation.json
+
+processors:
+- add_docker_metadata:
+    host: "unix:///var/run/docker.sock"
+- decode_json_fields:
+    fields: ["message"]
+    target: "json"
+    overwrite_keys: true
+
+output.elasticsearch:
+  hosts: '${ELASTICSEARCH_HOSTS:elasticsearch:9200}'
+  username: '${ELASTICSEARCH_USERNAME:}'
+  password: '${ELASTICSEARCH_PASSWORD:}'
+
+logging.json: true
+logging.metrics.enabled: false
+
+setup.dashboards.enabled: true
+setup.kibana.host: '${KIBANA_HOST:kibana:5601}'
+
+http.enabled: true
+http.host: 0.0.0.0
+http.port: 5066

@@ -1,0 +1,21 @@
+apm-server:
+  host: "0.0.0.0:8200"
+
+
+output.elasticsearch:
+  hosts: '${ELASTICSEARCH_HOSTS:elasticsearch:9200}'
+  username: '${ELASTICSEARCH_USERNAME:}'
+  password: '${ELASTICSEARCH_PASSWORD:}'
+
+
+setup.template.settings:
+  index:
+    number_of_shards: 1
+    number_of_replicas: 0
+    codec: best_compression
+
+setup.kibana.host: '${KIBANA_HOST:kibana:5601}'
+
+http.enabled: true
+http.host: 0.0.0.0
+http.port: 5066

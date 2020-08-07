@@ -1,0 +1,29 @@
+setup.template.settings:
+  index:
+    number_of_shards: 1
+    number_of_replicas: 0
+    codec: best_compression
+
+packetbeat.interfaces.device: any
+
+packetbeat.flows:
+  timeout: 30s
+  period: 10s
+
+packetbeat.protocols.http:
+  ports: [5066]
+
+processors:
+- add_docker_metadata: ~
+
+output.elasticsearch:
+  hosts: '${ELASTICSEARCH_HOSTS:elasticsearch:9200}'
+  username: '${ELASTICSEARCH_USERNAME:}'
+  password: '${ELASTICSEARCH_PASSWORD:}'
+
+setup.dashboards.enabled: true
+setup.kibana.host: '${KIBANA_HOST:kibana:5601}'
+
+http.enabled: true
+http.host: 0.0.0.0
+http.port: 5066

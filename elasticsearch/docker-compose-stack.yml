@@ -1,0 +1,309 @@
+version: '3'
+
+
+volumes:
+  elastic_data:
+    driver: local
+  elastic_logs:
+    driver: local
+
+networks:
+  elastic:
+    driver: bridge
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION}
+    container_name: elasticsearch
+    restart: unless-stopped
+    environment:
+      cluster_name: ${ELASTIC_CLUSTER_NAME}
+      node.name: ${ELASTIC_NODE_NAME}
+#      cluster.initial_master_nodes: ${ELASTIC_INIT_MASTER_NODE}
+#      discovery.seed_hosts: ${ELASTIC_DISCOVERY_SEEDS}
+      bootstrap.memory_lock: "true"
+      xpack.security.enabled: "true"
+      xpack.monitoring.collection.enabled: "true"
+      xpack.monitoring.elasticsearch.collection.enabled: "false"
+      network.host: _eth0_
+      discovery.type: single-node
+      path.repo: "/usr/share/elasticsearch/data/"
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      ES_JAVA_OPTS: -Xmx${ELASTICSEARCH_HEAP} -Xms${ELASTICSEARCH_HEAP}
+    cap_add:
+      - ALL
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 655350
+        hard: 655350
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+      - elastic_logs:/usr/share/elasticsearch/logs
+    networks:
+      - elastic
+    ports:
+      - 9200:9200
+      - 9300:9300
+    healthcheck:
+      test: curl -s http://localhost:9200 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ELK_VERSION}
+    container_name: kibana
+    restart: unless-stopped
+    volumes:
+      - ./stack/kibana.yml:/usr/share/kibana/config/kibana.yml
+    networks:
+      - elastic
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    environment:
+      - ELASTICSEARCH_HOSTS=http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}
+      - ELASTICSEARCH_USERNAME=${ELASTIC_USERNAME}
+      - ELASTICSEARCH_PASSWORD="${ELASTIC_PASSWORD}"
+    healthcheck:
+      test: curl -s http://localhost:5601 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:${ELK_VERSION}
+    container_name: logstash
+    restart: unless-stopped
+    volumes:
+      - ./stack/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./stack/logstash-pipeline.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    environment:
+      - ELASTICSEARCH_HOSTS=http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}
+      - ELASTICSEARCH_USERNAME=${ELASTIC_USERNAME}
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+    networks:
+      - elastic
+    depends_on: ['elasticsearch', 'kibana']
+    healthcheck:
+      test: curl -s http://localhost:9600 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 30s
+      timeout: 15s
+      retries: 5
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:${ELK_VERSION}
+    user: root
+    container_name: filebeat
+    command: -e
+    restart: unless-stopped
+    volumes:
+      - ./stack/filebeat.docker.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - elastic_logs:/var/logs/elasticsearch
+    environment:
+      - ELASTICSEARCH_HOSTS=["http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"]
+      - ELASTICSEARCH_USERNAME="${ELASTIC_USERNAME}"
+      - ELASTICSEARCH_PASSWORD="${ELASTIC_PASSWORD}"
+      - KIBANA_HOST=kibana:5601
+    networks:
+      - elastic
+    depends_on: ['elasticsearch', 'kibana']
+    healthcheck:
+      test: curl -s http://localhost:5066 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 30s
+      timeout: 15s
+      retries: 5
+
+  heartbeat:
+    image: docker.elastic.co/beats/heartbeat:${ELK_VERSION}
+    container_name: heartbeat
+    command: --strict.perms=false -e
+    restart: unless-stopped
+    volumes:
+      - ./stack/heartbeat.docker.yml:/usr/share/heartbeat/heartbeat.yml:ro
+    environment:
+      - ELASTICSEARCH_HOSTS=["http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"]
+      - ELASTICSEARCH_USERNAME="${ELASTIC_USERNAME}"
+      - ELASTICSEARCH_PASSWORD="${ELASTIC_PASSWORD}"
+      - KIBANA_HOST=kibana:5601
+    networks:
+      - elastic
+    depends_on: ['elasticsearch', 'kibana']
+    healthcheck:
+      test: curl -s http://localhost:5066 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 30s
+      timeout: 15s
+      retries: 5
+
+  packetbeat:
+    image: docker.elastic.co/beats/packetbeat:${ELK_VERSION}
+    container_name: packetbeat
+    command: --strict.perms=false -e
+    restart: unless-stopped
+    volumes:
+      - ./stack/packetbeat.docker.yml:/usr/share/packetbeat/packetbeat.yml:ro
+    environment:
+      - ELASTICSEARCH_HOSTS=["http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"]
+      - ELASTICSEARCH_USERNAME="${ELASTIC_USERNAME}"
+      - ELASTICSEARCH_PASSWORD="${ELASTIC_PASSWORD}"
+      - KIBANA_HOST=kibana:5601
+    networks:
+      - elastic
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    depends_on: ['elasticsearch', 'kibana']
+    healthcheck:
+      test: curl -s http://localhost:5066 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 30s
+      timeout: 15s
+      retries: 5
+
+  auditbeat:
+    image: docker.elastic.co/beats/auditbeat:${ELK_VERSION}
+    container_name: auditbeat
+    command: --strict.perms=false -e
+    restart: unless-stopped
+    volumes:
+      - ./stack/auditbeat.docker.yml:/usr/share/auditbeat/auditbeat.yml:ro
+    environment:
+      - ELASTICSEARCH_HOSTS=["http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"]
+      - ELASTICSEARCH_USERNAME="${ELASTIC_USERNAME}"
+      - ELASTICSEARCH_PASSWORD="${ELASTIC_PASSWORD}"
+      - KIBANA_HOST=kibana:5601
+    networks:
+      - elastic
+    cap_add:
+      - ALL
+    pid: host
+    user: root
+    depends_on: ['elasticsearch', 'kibana']
+    healthcheck:
+      test: curl -s http://localhost:5066 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 30s
+      timeout: 15s
+      retries: 5
+
+  journalbeat:
+    image: docker.elastic.co/beats/journalbeat:${ELK_VERSION}
+    container_name: journalbeat
+    command: --strict.perms=false -e
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./stack/journalbeat.docker.yml:/usr/share/journalbeat/journalbeat.yml:ro
+      - /var/log/journal:/var/log/journal
+      - /etc/machine-id:/etc/machine-id
+      - /run/systemd:/run/systemd
+      - /etc/hostname:/etc/hostname:ro
+    environment:
+      - ELASTICSEARCH_HOSTS=["http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"]
+      - ELASTICSEARCH_USERNAME="${ELASTIC_USERNAME}"
+      - ELASTICSEARCH_PASSWORD="${ELASTIC_PASSWORD}"
+      - KIBANA_HOST=kibana:5601
+    networks:
+      - elastic
+    depends_on: ['elasticsearch', 'kibana']
+    healthcheck:
+      test: curl -s http://localhost:5066 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 30s
+      timeout: 15s
+      retries: 5
+
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:${ELK_VERSION}
+    container_name: metricbeat
+    command: -e -system.hostfs=/hostfs
+    restart: unless-stopped
+    user: root
+    volumes:
+      - /proc:/hostfs/proc:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /:/hostfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./stack/metricbeat.docker.yml:/usr/share/metricbeat/metricbeat.yml:ro
+    environment:
+      - ELASTICSEARCH_HOSTS=["http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"]
+      - ELASTICSEARCH_USERNAME="${ELASTIC_USERNAME}"
+      - ELASTICSEARCH_PASSWORD="${ELASTIC_PASSWORD}"
+      - KIBANA_HOST=kibana:5601
+    networks:
+      - elastic
+    depends_on: ['elasticsearch', 'kibana', 'heartbeat', 'filebeat']
+    healthcheck:
+      test: curl -s http://localhost:5066 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 30s
+      timeout: 15s
+      retries: 5
+
+  apmserver:
+    image: docker.elastic.co/apm/apm-server:${ELK_VERSION}
+    container_name: apmserver
+    command: --strict.perms=false -e
+    restart: unless-stopped
+    ports:
+      - 8200:8200
+    environment:
+      - ELASTICSEARCH_HOSTS=["http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"]
+      - ELASTICSEARCH_USERNAME="${ELASTIC_USERNAME}"
+      - ELASTICSEARCH_PASSWORD="${ELASTIC_PASSWORD}"
+      - KIBANA_HOST=kibana:5601
+    volumes:
+      - ./stack/apmserver.docker.yml:/usr/share/apm-server/apm-server.yml:ro
+    networks:
+      - elastic
+    depends_on: ['elasticsearch', 'kibana']
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:8200/"]
+      retries: 6
+
+  apm-agent:
+    image: eyalkoren/pet-clinic:with-agent
+    container_name: apm-agent
+    environment:
+      - ELASTIC_APM_SERVER_URL=http://apmserver:8200
+      - ELASTIC_APM_SERVICE_NAME=petclinic-spring
+      - ELASTIC_APM_APPLICATION_PACKAGES=org.springframework.samples.petclinic
+      - ELASTIC_APM_ENVIRONMENT=test
+      - ELASTIC_APM_LOG_LEVEL=DEBUG
+      - ELASTIC_APM_SECRET_TOKEN=
+    networks:
+      - elastic
+    depends_on: ['apmserver']
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:8080/"]
+      retries: 6
+
+#  apm-agent-django:
+#    image: lyonn/django-agent-elk:demo.2.0
+#    container_name: apm-agent-django
+#    environment:
+#      ELASTIC_APM_SERVER_URL: http://apmserver:8200
+#      SERVICE_NAME: django-demo
+#    networks:
+#      - elastic
+
+  app-search:
+    image: docker.elastic.co/app-search/app-search:7.6.2
+    container_name: app-search
+    restart: unless-stopped
+    ports:
+      - 3002:3002
+    environment:
+      - secret_session_key=supersecretsessionkey
+      - elasticsearch.host=http://elasticsearch:9200/
+      - elasticsearch.username="${ELASTIC_USERNAME}"
+      - elasticsearch.password="${ELASTIC_PASSWORD}"
+      - allow_es_settings_modification=true
+    networks:
+      - elastic
+    depends_on: ['elasticsearch', 'kibana', 'apmserver']
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:3002"]
+      retries: 6

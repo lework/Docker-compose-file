@@ -1,0 +1,51 @@
+# Define a directory to load monitor definitions from. Definitions take the form
+# of individual yaml files.
+heartbeat.config.monitors:
+  # Directory + glob pattern to search for configuration files
+  path: ${path.config}/monitors.d/*.yml
+  # If enabled, heartbeat will periodically check the config.monitors path for changes
+  reload.enabled: false
+  # How often to check for changes
+  reload.period: 5s
+
+setup.template.settings:
+  index:
+    number_of_shards: 1
+    number_of_replicas: 0
+    codec: best_compression
+
+heartbeat.monitors:
+- type: http
+  id: es-service
+  name: ElasticSearch Service
+  schedule: '@every 5s'
+  hosts: '${ELASTICSEARCH_HOSTS:elasticsearch:9200}'
+  username: '${ELASTICSEARCH_USERNAME:}'
+  password: '${ELASTICSEARCH_PASSWORD:}'
+
+- type: http
+  id: kibana-service
+  name: Kibana Service
+  hosts: ["http://kibana:5601"]
+  schedule: '@every 5s'
+
+- type: icmp
+  id: elk-service
+  name: elk stack Service
+  schedule: '@every 5s'
+  hosts:
+    - elasticsearch
+    - kibana
+
+processors:
+  - add_docker_metadata: ~
+
+output.elasticsearch:
+  hosts: '${ELASTICSEARCH_HOSTS:elasticsearch:9200}'
+  username: '${ELASTICSEARCH_USERNAME:}'
+  password: '${ELASTICSEARCH_PASSWORD:}'
+
+http.enabled: true
+http.host: 0.0.0.0
+http.port: 5066
+
