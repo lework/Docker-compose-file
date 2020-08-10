@@ -1,0 +1,51 @@
+global:
+  external_labels:
+    prometheus: prom-2
+    cluster: 'prometheus-ha'
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - "alertmanager:9093"
+
+rule_files:
+  - "alerts/*.yaml"
+
+scrape_configs:
+- job_name: prometheus
+  scrape_interval: 5s
+  static_configs:
+  - targets:
+    - "prometheus2:9090"
+- job_name: thanos-sidecar
+  scrape_interval: 5s
+  static_configs:
+  - targets:
+    - "sidecar2:10902"
+- job_name: thanos-store
+  scrape_interval: 5s
+  static_configs:
+  - targets:
+    - "store:10902"
+- job_name: thanos-receive
+  scrape_interval: 5s
+  static_configs:
+  - targets:
+    - "receive:10902"
+- job_name: thanos-compact
+  scrape_interval: 5s
+  static_configs:
+  - targets:
+    - "compactor:10902"
+- job_name: thanos-rule
+  scrape_interval: 5s
+  static_configs:
+  - targets:
+    - "ruler:10902"
+- job_name: thanos-query
+  scrape_interval: 5s
+  static_configs:
+  - targets:
+    - "query0:10902"
+    - "query1:10902"

@@ -1,0 +1,27 @@
+global:
+  # The smarthost and SMTP sender used for mail notifications.
+  smtp_smarthost: 'smtp.test.com:25'
+  smtp_from: 'lework@test.com'
+  smtp_auth_username: 'lework@test.com'
+  smtp_auth_password: '123456'
+
+# The directory from which notification templates are read.
+templates: 
+- '/etc/alertmanager/template/*.tmpl'
+
+# The root route on which each incoming alert enters.
+route:
+  # its own grouping. Example: group_by: [...]
+  group_by: ['alertname']
+  group_wait: 5s
+  group_interval: 5s
+  repeat_interval: 1h
+
+  receiver: default-receiver
+
+
+receivers:
+- name: 'default-receiver'
+  email_configs:
+  - to: 'lework@test.com'
+    send_resolved: true

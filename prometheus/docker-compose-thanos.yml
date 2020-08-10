@@ -1,0 +1,527 @@
+version: '3'
+
+networks:
+  thanos: {}
+
+volumes:
+  minio: {}
+  thanos0: {}
+  thanos1: {}
+  thanos2: {}
+  store: {}
+  receive: {}
+  compact: {}
+  ruler: {}
+  grafana_data: {}
+
+services:
+  minio:
+    image: minio/minio:RELEASE.2020-08-08T04-50-06Z
+    container_name: minio
+    hostname: minio
+    volumes:
+      - minio:/export
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "9000:9000"
+    networks:
+      - thanos
+    environment:
+      MINIO_ACCESS_KEY: EXAMPLEKEY
+      MINIO_SECRET_KEY: EXAMPLESECRET
+    command: server /export
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  mc:
+    image: minio/mc
+    container_name: mc
+    entrypoint: |
+      sh -c 'sh -s << EOF
+      sleep 5
+      mc config host add tmp http://minio:9000 EXAMPLEKEY EXAMPLESECRET
+      mc mb tmp/thanos
+      mc config host rm tmp
+      sleep 10000000
+      EOF'
+    networks:
+      - thanos
+    depends_on:
+      - minio
+
+  prometheus0:
+    image: prom/prometheus:v2.20.1
+    container_name: prometheus0
+    user: root
+    volumes:
+      - thanos0:/data
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/prometheus/alerts:/etc/prometheus/alerts
+      - ./thanos/prometheus/prometheus0.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/data/prom0"
+      - "--log.level=info"
+      - "--web.enable-lifecycle"
+      - "--storage.tsdb.min-block-duration=2h"
+      - "--storage.tsdb.max-block-duration=2h"
+      - "--web.listen-address=0.0.0.0:9090"
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:9090"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    depends_on:
+      - minio
+      - mc
+    networks:
+      - thanos
+
+  prometheus1:
+    image: prom/prometheus:v2.20.1
+    container_name: prometheus1
+    user: root
+    volumes:
+      - thanos1:/data
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/prometheus/alerts:/etc/prometheus/alerts
+      - ./thanos/prometheus/prometheus1.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/data/prom1"
+      - "--log.level=info"
+      - "--web.enable-lifecycle"
+      - "--storage.tsdb.min-block-duration=2h"
+      - "--storage.tsdb.max-block-duration=2h"
+      - "--web.listen-address=0.0.0.0:9090"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:9090"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    depends_on:
+      - minio
+      - mc
+    networks:
+      - thanos
+
+  prometheus2:
+    image: prom/prometheus:v2.20.1
+    container_name: prometheus2
+    user: root
+    volumes:
+      - thanos2:/data
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/prometheus/alerts:/etc/prometheus/alerts
+      - ./thanos/prometheus/prometheus2.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/data/prom2"
+      - "--log.level=info"
+      - "--web.enable-lifecycle"
+      - "--storage.tsdb.min-block-duration=2h"
+      - "--storage.tsdb.max-block-duration=2h"
+      - "--web.listen-address=0.0.0.0:9090"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:9090"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    depends_on:
+      - minio
+      - mc
+    networks:
+      - thanos
+
+  sidecar0:
+    image: thanosio/thanos:v0.14.0
+    container_name: thanos-sidecar0
+    command:
+      - "sidecar"
+      - "--debug.name=sidecar-0"
+      - "--log.level=debug"
+      - "--grpc-address=0.0.0.0:10901"
+      - "--grpc-grace-period=1s"
+      - "--http-address=0.0.0.0:10902"
+      - "--http-grace-period=1s"
+      - "--prometheus.url=http://prometheus0:9090"
+      - "--tsdb.path=/data/prom0"
+      - "--objstore.config-file=/bucket.yml"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:10902/-/healthy"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - thanos0:/data
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/thanos/bucket.yml:/bucket.yml
+    depends_on:
+      - minio
+      - prometheus0
+    networks:
+      - thanos
+
+  sidecar1:
+    image: thanosio/thanos:v0.14.0
+    container_name: thanos-sidecar1
+    command:
+      - "sidecar"
+      - "--debug.name=sidecar-1"
+      - "--log.level=debug"
+      - "--grpc-address=0.0.0.0:10901"
+      - "--grpc-grace-period=1s"
+      - "--http-address=0.0.0.0:10902"
+      - "--http-grace-period=1s"
+      - "--prometheus.url=http://prometheus1:9090"
+      - "--tsdb.path=/data/prom1"
+      - "--objstore.config-file=/bucket.yml"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:10902/-/healthy"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - thanos1:/data
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/thanos/bucket.yml:/bucket.yml
+    depends_on:
+      - minio
+      - prometheus1
+    networks:
+      - thanos
+
+  sidecar2:
+    image: thanosio/thanos:v0.14.0
+    container_name: thanos-sidecar2
+    command:
+      - "sidecar"
+      - "--debug.name=sidecar-2"
+      - "--log.level=debug"
+      - "--grpc-address=0.0.0.0:10901"
+      - "--grpc-grace-period=1s"
+      - "--http-address=0.0.0.0:10902"
+      - "--http-grace-period=1s"
+      - "--prometheus.url=http://prometheus2:9090"
+      - "--tsdb.path=/data/prom2"
+      - "--objstore.config-file=/bucket.yml"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:10902/-/healthy"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - thanos2:/data
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/thanos/bucket.yml:/bucket.yml
+    depends_on:
+      - minio
+      - prometheus2
+    networks:
+      - thanos
+
+  store:
+    image: thanosio/thanos:v0.14.0
+    container_name: thanos-store
+    restart: always
+    command:
+      - "store"
+      - "--debug.name=store"
+      - "--log.level=debug"
+      - "--grpc-address=0.0.0.0:10901"
+      - "--grpc-grace-period=1s"
+      - "--http-address=0.0.0.0:10902"
+      - "--http-grace-period=1s"
+      - "--data-dir=/data/store"
+      - "--objstore.config-file=/bucket.yml"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:10902/-/healthy"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - store:/data
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/thanos/bucket.yml:/bucket.yml
+    depends_on:
+      - minio
+      - mc
+    networks:
+      - thanos
+
+  receive:
+    image: thanosio/thanos:v0.14.0
+    container_name: thanos-receive
+    command:
+      - "receive"
+      - "--debug.name=receive"
+      - "--log.level=debug"
+      - "--tsdb.path=/data/remote-write-receive-data"
+      - "--grpc-address=0.0.0.0:10901"
+      - "--grpc-grace-period=1s"
+      - "--http-address=0.0.0.0:10902"
+      - "--http-grace-period=1s"
+      - "--label=receive=\"true\""
+      - "--objstore.config-file=/bucket.yml"
+      - "--remote-write.address=0.0.0.0:10291"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:10902/-/healthy"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - receive:/data
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/thanos/bucket.yml:/bucket.yml
+    depends_on:
+      - minio
+      - mc
+    networks:
+      - thanos
+
+  remotewrite:
+    image: prom/prometheus:v2.20.1
+    container_name: thanos-remote-write
+    user: root
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/prometheus/prometheus-remote_write.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:9090"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    depends_on:
+      - minio
+      - prometheus0
+      - sidecar0
+      - receive
+    networks:
+      - thanos
+
+  node-exporter:
+    image: prom/node-exporter:v1.0.1
+    container_name: node-exporter
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.netclass.ignored-devices="veth.*"'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:9100"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - thanos
+
+  query0:
+    image: thanosio/thanos:v0.14.0
+    container_name: thanos-query0
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    command:
+      - "query"
+      - "--debug.name=query0"
+      - "--log.level=debug"
+      - "--grpc-address=0.0.0.0:10901"
+      - "--grpc-grace-period=1s"
+      - "--http-address=0.0.0.0:10902"
+      - "--http-grace-period=1s"
+      - "--query.replica-label=prometheus"
+      - "--store=sidecar0:10901"
+      - "--store=sidecar1:10901"
+      - "--store=sidecar2:10901"
+      - "--store=store:10901"
+      - "--store=receive:10901"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:10902/-/healthy"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    ports:
+      - 10902:10902
+    depends_on:
+      - minio
+      - sidecar0
+      - sidecar1
+      - sidecar2
+      - store
+      - receive
+    networks:
+      - thanos
+
+  query1:
+    image: thanosio/thanos:v0.14.0
+    container_name: thanos-query1
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    command:
+      - "query"
+      - "--debug.name=query1"
+      - "--log.level=debug"
+      - "--grpc-address=0.0.0.0:10901"
+      - "--grpc-grace-period=1s"
+      - "--http-address=0.0.0.0:10902"
+      - "--http-grace-period=1s"
+      - "--query.replica-label=prometheus"
+      - "--store=sidecar0:10901"
+      - "--store=sidecar1:10901"
+      - "--store=sidecar2:10901"
+      - "--store=store:10901"
+      - "--store=receive:10901"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:10902/-/healthy"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    depends_on:
+      - minio
+      - sidecar0
+      - sidecar1
+      - sidecar2
+      - store
+      - receive
+    networks:
+      - thanos
+      
+  compactor:
+    image: thanosio/thanos:v0.14.0
+    container_name: compactor
+    command:
+      - "compact"
+      - "--wait"
+      - "--data-dir=/tmp/thanos-compact"
+      - "--log.level=debug"
+      - "--objstore.config-file=/bucket.yml"
+      - "--http-address=0.0.0.0:10902"
+      - "--http-grace-period=2m"
+      - "--consistency-delay=30m"
+      - "--debug.accept-malformed-index"
+    restart: unless-stopped  
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:10902/-/healthy"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - compact:/tmp
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/thanos/bucket.yml:/bucket.yml
+    depends_on:
+      - minio
+      - sidecar0
+      - sidecar1
+      - sidecar2
+      - store
+    networks:
+      - thanos
+
+  ruler:
+    image: thanosio/thanos:v0.14.0
+    container_name: ruler
+    command:
+      - 'rule'
+      - '--grpc-address=0.0.0.0:10901'
+      - '--http-address=0.0.0.0:10902'
+      - '--log.level=debug'
+      - '--data-dir=/tmp'
+      - '--eval-interval=15s'
+      - '--rule-file=/etc/thanos/*.rules.yaml'
+      - '--alertmanagers.url=http://alertmanager:9093'
+      - '--query=query0:10902'
+      - '--query=query1:10902'
+      - '--objstore.config-file=/bucket.yml'
+      - "--label=ruler_cluster=\"prometheus-ha\""
+    restart: unless-stopped  
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:10902/-/healthy"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - ruler:/tmp
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/thanos/bucket.yml:/bucket.yml
+      - ./thanos/thanos/ruler.rules.yaml:/etc/thanos/ruler.rules.yaml
+    depends_on:
+      - minio
+      - sidecar0
+      - sidecar1
+      - sidecar2
+      - store
+      - query0
+      - query1
+    networks:
+      - thanos
+
+  alertmanager:
+    image: prom/alertmanager:v0.21.0
+    container_name: alertmanager
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/alertmanager/config.yml:/etc/alertmanager/config.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    restart: unless-stopped  
+    ports:
+      - 9093:9093
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:9093"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - thanos
+ 
+  grafana:
+    image: grafana/grafana:7.1.3
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - /etc/localtime:/etc/localtime:ro
+      - ./thanos/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./thanos/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./thanos/grafana/dashboards:/etc/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-t 1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    ports:
+      - 3000:3000
+    networks:
+      - thanos
