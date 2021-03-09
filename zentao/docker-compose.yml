@@ -1,0 +1,14 @@
+version: '3'
+services:
+  zentao:
+    container_name: zentao
+    image: easysoft/zentao:12.5.3
+    volumes:
+      - "./zentaopms:/www/zentaopms"
+      - "./mysql_data:/var/lib/mysql"
+      - "/etc/localtime:/etc/localtime"
+    ports:
+      - "8080:80"
+    restart: on-failure
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
