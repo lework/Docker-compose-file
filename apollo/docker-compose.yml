@@ -1,0 +1,146 @@
+version: '3'
+
+networks:
+  apollo:
+
+services:
+  # db
+  apollo-mysql:
+    container_name: apollo-mysql
+    image: mysql:5.7
+    volumes:
+      - "${DATA_BASE_DIR}/mysql_data:/var/lib/mysql"
+      - ./sql:/docker-entrypoint-initdb.d
+      - "/etc/localtime:/etc/localtime"
+    ports:
+      - "3306:3306"
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DATASOURCE_PASSWORD}
+    networks:
+      - apollo
+      
+  # dev configservice
+  apollo-configservice-dev:
+    container_name: apollo-configservice-dev
+    image: apolloconfig/apollo-configservice:${VERSION}
+    restart: always
+    depends_on:
+      - apollo-mysql
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://apollo-mysql/ApolloConfigDB_DEV?characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: ${DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
+      EUREKA_INSTANCE_IP_ADDRESS: ${IP_ADDRESS}
+      EUREKA_INSTANCE_HOME_PAGE_URL: http://${IP_ADDRESS}:${CONFIG_PORT_DEV}
+    volumes:
+      - ${LOG_BASE_DIR}/apollo-configservice-dev/logs:/opt/logs
+    ports:
+      - "${CONFIG_PORT_DEV}:8080"
+    networks:
+      - apollo
+
+  # dev adminservice
+  apollo-adminservice-dev:
+    container_name: apollo-adminservice-dev
+    image: apolloconfig/apollo-adminservice:${VERSION}
+    restart: always
+    depends_on:
+      - apollo-mysql
+      - apollo-configservice-dev
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://apollo-mysql/ApolloConfigDB_DEV?characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: ${DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
+      EUREKA_INSTANCE_IP_ADDRESS: ${IP_ADDRESS}
+      EUREKA_INSTANCE_HOME_PAGE_URL: http://${IP_ADDRESS}:${ADMIN_PORT_DEV}
+    volumes:
+      - ${LOG_BASE_DIR}/apollo-adminservice-dev/logs:/opt/logs
+    ports:
+      - "${ADMIN_PORT_DEV}:8090"
+    networks:
+      - apollo
+      
+  # pro configservice
+  apollo-configservice-pro:
+    container_name: apollo-configservice-pro
+    image: apolloconfig/apollo-configservice:${VERSION}
+    restart: always
+    depends_on:
+      - apollo-mysql
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://apollo-mysql/ApolloConfigDB_PRO?characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: ${DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
+      EUREKA_INSTANCE_IP_ADDRESS: ${IP_ADDRESS}
+      EUREKA_INSTANCE_HOME_PAGE_URL: http://${IP_ADDRESS}:${CONFIG_PORT_PRO}
+    volumes:
+      - ${LOG_BASE_DIR}/apollo-configservice-pro/logs:/opt/logs
+    ports:
+      - "${CONFIG_PORT_PRO}:8080"
+    networks:
+      - apollo
+      
+  # pro adminservice
+  apollo-adminservice-pro:
+    container_name: apollo-adminservice-pro
+    image: apolloconfig/apollo-adminservice:${VERSION}
+    restart: always
+    depends_on:
+      - apollo-mysql
+      - apollo-configservice-pro
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://apollo-mysql/ApolloConfigDB_PRO?characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: ${DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
+      EUREKA_INSTANCE_IP_ADDRESS: ${IP_ADDRESS}
+      EUREKA_INSTANCE_HOME_PAGE_URL: http://${IP_ADDRESS}:${ADMIN_PORT_PRO}
+    volumes:
+      - ${LOG_BASE_DIR}/apollo-adminservice-pro/logs:/opt/logs
+    ports:
+      - "${ADMIN_PORT_PRO}:8090"
+    networks:
+      - apollo
+      
+  # portal
+  apollo-portal:
+    container_name: apollo-portal
+    image: apolloconfig/apollo-portal:${VERSION}
+    restart: always
+    depends_on:
+      - apollo-mysql
+      - apollo-adminservice-dev
+      - apollo-adminservice-pro
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://apollo-mysql/ApolloPortalDB?characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: ${DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
+      APOLLO_PROFILE: github,auth
+      APOLLO_PORTAL_ENVS: dev,pro
+      DEV_META: http://${IP_ADDRESS}:${CONFIG_PORT_DEV}
+      PRO_META: http://${IP_ADDRESS}:${CONFIG_PORT_PRO}
+    volumes:
+      - ${LOG_BASE_DIR}/apollo-portal/logs:/opt/logs
+    ports:
+      - "8070:8070"
+    networks:
+      - apollo
+
+  # demo dev
+  apollo-demo-dev:
+    container_name: pollo-demo-dev
+    image: python:3
+    restart: always
+    depends_on:
+      - apollo-adminservice-dev
+    command: bash -c "pip install requests; cd /apollo_demo && python app.py"
+    environment:
+      APOLLO_APP_ID: SampleApp
+      APOLLO_CLUSTER: default
+      APOLLO_CONFIG_SERVER_URL: http://${IP_ADDRESS}:${CONFIG_PORT_DEV} 
+    volumes:
+      - ./apollo_demo:/apollo_demo
+    ports:
+      - "8000:8000"
+    networks:
+      - apollo
