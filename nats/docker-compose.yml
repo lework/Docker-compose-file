@@ -1,0 +1,15 @@
+version: '3.5'
+
+networks:
+  nats:
+    name: nats
+
+services:
+  nats:
+    image: nats:2.2.6-alpine3.13
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+      - "6222:6222"
+    restart: unless-stopped
+    networks: ["nats"]

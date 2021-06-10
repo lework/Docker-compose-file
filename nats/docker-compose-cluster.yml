@@ -1,0 +1,25 @@
+version: "3"
+
+networks:
+  nats:
+    name: nats
+
+services:
+  nats:
+    image: nats:2.2.6-alpine3.13
+    ports:
+      - "8222:8222"
+    restart: unless-stopped
+    networks: ["nats"]
+  nats-1:
+    image: nats:2.2.6-alpine3.13
+    command: "--cluster nats://0.0.0.0:6222 --routes=nats://ruser:T0pS3cr3t@nats:6222"
+    networks: ["nats"]
+    restart: unless-stopped
+    depends_on: ["nats"]
+  nats-2:
+    image: nats:2.2.6-alpine3.13
+    command: "--cluster nats://0.0.0.0:6222 --routes=nats://ruser:T0pS3cr3t@nats:6222"
+    networks: ["nats"]
+    restart: unless-stopped
+    depends_on: ["nats"]

@@ -1,0 +1,46 @@
+version: '3.1'
+
+networks:
+  yapi:
+
+services:
+  mongo:
+    container_name: yapi_mongodb
+    image: mongo:4.4.6
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root123456
+      MONGO_INITDB_DATABASE: admin
+    volumes: 
+        - ./docker-entrypoint-initdb.d/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+        - ./mongo_data/etc:/etc/mongo
+        - ./mongo_data/data/db:/data/db
+    ports: 
+        - 27017:27017
+    healthcheck:
+      test: ["CMD", "netstat -anp | grep 27017"]
+      interval: 2m
+      timeout: 10s
+      retries: 3
+    networks: ["yapi"]
+    restart: always
+
+  yapi:
+    container_name: yapi
+    image: yapi
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    # 初始化启动 
+    command: "yapi server"
+    # 初始化之后使用
+    # command: "node /my-yapi/vendors/server/app.js"
+    volumes: 
+        - ./yapi_data:/my-yapi
+    ports: 
+      - 9090:9090
+      - 3000:3000
+    depends_on: 
+      - mongo
+    networks: ["yapi"]
+    restart: always
