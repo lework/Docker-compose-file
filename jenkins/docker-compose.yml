@@ -8,8 +8,14 @@ services:
       - 8080:8080
       - 50000:50000
     volumes:
-      - ./jenkins_home2:/var/jenkins_home
+      - ./jenkins_data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
       - /usr/bin/docker:/usr/bin/docker
       - /etc/localtime:/etc/localtime
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=en_US.UTF-8
+      - "JAVA_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 -Dhudson.model.DownloadService.noSignatureCheck=true"
+      - JENKINS_UC=https://cdn.jsdelivr.net/gh/lework/jenkins-update-center/updates/tsinghua/update-center.json
     restart: always

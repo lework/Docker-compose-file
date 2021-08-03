@@ -1,0 +1,12 @@
+version: '3.9'
+
+services:
+  tengine:
+    container_name: tengine
+    image: lework/tengine:2.3.3
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    healthcheck:
+      test: wget -q -O - localhost

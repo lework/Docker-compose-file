@@ -65,10 +65,11 @@ services:
       - "5601:5601"
     depends_on:
       - elasticsearch
-    environment:
+    environment: # https://www.elastic.co/guide/cn/kibana/current/docker.html
       - ELASTICSEARCH_HOSTS=http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}
       - ELASTICSEARCH_USERNAME=${ELASTIC_USERNAME}
       - ELASTICSEARCH_PASSWORD="${ELASTIC_PASSWORD}"
+      - I18N_LOCALE=zh-CN
     healthcheck:
       test: curl -s http://localhost:5601 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
       interval: 10s
