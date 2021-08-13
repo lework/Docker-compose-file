@@ -1,0 +1,72 @@
+version: '3'
+
+networks:
+  tick:
+
+services:
+  influxdb:
+    container_name: influxdb
+    image: influxdb:2.0.7
+    restart: always
+    volumes:
+      - ./influxdb/data:/var/lib/influxdb2
+      - ./influxdb/config/:/etc/influxdb2
+      - /etc/localtime:/etc/localtime
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CUTF-8
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
+      - DOCKER_INFLUXDB_INIT_ORG=my-org
+      - DOCKER_INFLUXDB_INIT_BUCKET=my-bucket
+      - DOCKER_INFLUXDB_INIT_RETENTION=1w
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=ICAgY29udGFpbmVyX
+    ports:
+      - "8086:8086"
+      - "8082:8082"
+      - "8089:8089/udp"
+    networks:
+      - tick
+
+  telegraf:
+    container_name: telegraf
+    image: telegraf:1.19.2
+    restart: always
+    volumes:
+      - ./telegraf/config:/etc/telegraf/
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime
+      - /:/hostfs:ro
+    environment:
+      - HOST_ETC=/hostfs/etc
+      - HOST_PROC=/hostfs/proc
+      - HOST_SYS=/hostfs/sys
+      - HOST_VAR=/hostfs/var
+      - HOST_RUN=/hostfs/run
+      - HOST_MOUNT_PREFIX=/hostfs
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+    depends_on:
+      - influxdb
+    networks:
+      - tick
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:8.1.0
+    restart: always
+    volumes:
+      - ./grafana/data:/var/lib/grafana
+      - /etc/localtime:/etc/localtime
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+      - GF_EXPLORE_ENABLED=true
+    ports:
+      - "3000:3000"
+    depends_on:
+      - influxdb
+      - telegraf
+    networks:
+      - tick

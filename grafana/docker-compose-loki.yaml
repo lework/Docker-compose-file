@@ -5,23 +5,40 @@ networks:
 
 services:
   loki:
-    image: grafana/loki:1.5.0
+    image: grafana/loki:2.2.1
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
+    restart: always
+    volumes:
+      - loki_data/chunks:/loki/chunks/
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
     networks:
       - loki
 
   promtail:
-    image: grafana/promtail:1.5.0
+    image: grafana/promtail:2.2.1
     volumes:
       - /var/log:/var/log
     command: -config.file=/etc/promtail/docker-config.yaml
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
     networks:
       - loki
 
   grafana:
-    image: grafana/grafana:master
+    image: grafana/grafana:8.1.0
+    restart: always
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+      - GF_EXPLORE_ENABLED=true
     ports:
       - "3000:3000"
     networks:
