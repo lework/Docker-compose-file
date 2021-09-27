@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  mysql:
+    container_name: mysql
+    image: mysql:5.7
+    volumes:
+      - "./mysql_data:/var/lib/mysql"
+      - "/etc/localtime:/etc/localtime"
+    network_mode: "host"
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: cPfQon8xv
+      
+  redis:
+    container_name: redis
+    image: redis:5.0.7
+    volumes:
+      - "./redis_data:/data"
+      - "/etc/localtime:/etc/localtime"
+    network_mode: "host"
+    restart: always
+    command: [
+      '--port 6379',
+      '--requirepass 65a3l2E',
+      '--maxclients 1000',
+      '--maxmemory 1gb',
+      '--maxmemory-policy volatile-ttl',
+      '--appendonly yes',
+      '--aof-use-rdb-preamble yes' 
+    ]

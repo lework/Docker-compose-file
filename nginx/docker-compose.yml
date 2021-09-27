@@ -1,0 +1,20 @@
+version: '3.8'
+
+
+services:
+  test-static-nginx:
+    container_name: test-static-nginx
+    image: nginx:1.21.3-alpine
+    restart: always
+    volumes:
+      - ./nginx_html:/usr/share/nginx/html
+      - /etc/localtime:/etc/localtime
+    environment:
+      TZ: Asia/Shanghai
+      LANG: zh_CN.UTF-8
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost"]
+      interval: 1m
+      timeout: 6s
+      retries: 3
+      start_period: 5s

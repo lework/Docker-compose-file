@@ -1,0 +1,50 @@
+version: '3.4'
+services:
+  semaphore-mysql:
+    image: mysql:5.7.33
+    hostname: mysql
+    container_name: semaphore-mysql
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: semaphore
+      MYSQL_USER: root
+      MYSQL_PASSWORD: semaphore
+      MYSQL_ROOT_PASSWORD: semaphore
+    networks:
+      semaphore:
+        aliases:
+          - mysql
+    logging:
+      driver: json-file
+      options:
+        max-file: '3'
+        max-size: 100m
+
+  semaphore:
+    image: ansiblesemaphore/semaphore:v2.6.7
+    hostname: semaphore
+    container_name: semaphore
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime:ro
+      - ./data/semaphore-conf/:/etc/semaphore/ # /etc/semaphore/config.json
+    environment: 
+      SEMAPHORE_DB_HOST: mysql
+    depends_on:
+      - semaphore-mysql
+    networks:
+      semaphore:
+        aliases:
+          - semaphore
+    logging:
+      driver: json-file
+      options:
+        max-file: '3'
+        max-size: 100m
+
+networks:
+  semaphore:
+    driver: bridge
+
