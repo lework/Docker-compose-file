@@ -1,0 +1,115 @@
+version: '3'
+
+services:
+  zabbix-mysql:
+    container_name: zabbix-mysql
+    image: mysql:5.7
+    volumes:
+      - "./mysql_data:/var/lib/mysql"
+      - "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime"
+    network_mode: host
+    #ports:
+    #  - "3306:3306"
+    restart: always
+    environment:
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: 123456
+      MYSQL_ROOT_PASSWORD: 123456
+      LANG: C.UTF-8
+    command: --character-set-server=utf8 --collation-server=utf8_unicode_ci
+ 
+  zabbix-server-mysql:
+    container_name: zabbix-server-mysql
+    build: ./
+    image: zabbix-server-mysql:python2
+    volumes:
+      - "./zabbix_data/alertscripts:/usr/lib/zabbix/alertscripts"
+      - "./zabbix_data/zabbix_server.conf:/etc/zabbix/zabbix_server.conf"
+      - "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime"
+#    ulimits:
+#     nproc: 65535
+#     nofile:
+#      soft: 20000
+#      hard: 40000
+#    sysctls:
+#     - net.ipv4.ip_local_port_range=1024 65000
+#     - net.ipv4.conf.all.accept_redirects=0
+#     - net.ipv4.conf.all.secure_redirects=0
+#     - net.ipv4.conf.all.send_redirects=0
+    network_mode: host
+    user: root
+    privileged: true
+    #ports:
+    # - "10051:10051"
+    restart: always
+    environment:
+      DB_SERVER_HOST: 127.0.0.1
+      DB_SERVER_PORT: 3306
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: 123456
+    depends_on:
+     - zabbix-mysql
+ 
+  zabbix-web-nginx-mysql:
+    container_name: zabbix-web-nginx-mysql
+    image: zabbix/zabbix-web-nginx-mysql:centos-5.4.6
+    volumes:
+      - "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime"
+    network_mode: host
+    #ports:
+    # - "80:8080"
+    # - "443:8443"
+    restart: always
+    environment:
+      PHP_TZ: Asia/Shanghai
+      ZBX_SERVER_HOST: 127.0.0.1
+      DB_SERVER_HOST: 127.0.0.1
+      DB_SERVER_PORT: 3306
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: 123456
+#    sysctls:
+#     - net.core.somaxconn=65535
+    healthcheck:
+     test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+     interval: 10s
+     timeout: 5s
+     retries: 3
+     start_period: 30s
+    depends_on:
+      - zabbix-mysql
+      - zabbix-server-mysql
+ 
+  zabbix-grafana:
+    container_name: zabbix-grafana
+    image: grafana/grafana:8.2.2
+    network_mode: host
+    restart: always
+    #ports:
+    #  - "3000:3000"
+    environment: 
+      - GF_INSTALL_PLUGINS=alexanderzobnin-zabbix-app
+    depends_on:
+      - zabbix-mysql
+      - zabbix-server-mysql
+
+  zabbix-agent:
+    container_name: zabbix-agent
+    image: zabbix/zabbix-agent:centos-5.4.6
+    user: root
+    pid: host
+    network_mode: host
+    #ports:
+    # - "10050:10050"
+    restart: always
+    privileged: true
+    volumes:
+      - /var/run:/var/run
+    environment:
+      - ZBX_HOSTNAME=Zabbix server
+      - ZBX_SERVER_HOST=127.0.0.1
+    depends_on:
+      - zabbix-mysql
+      - zabbix-server-mysql

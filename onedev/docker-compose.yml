@@ -1,0 +1,21 @@
+---
+version: '3'
+
+services:
+  onedev:
+    container_name: onedev
+    image: 1dev/server
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - '6610:6610'
+      - '6611:6611'
+    volumes:
+      - ./onedev_data:/opt/onedev
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+    restart: always
+    
+    
+    
+# curl http://<host>:6610/

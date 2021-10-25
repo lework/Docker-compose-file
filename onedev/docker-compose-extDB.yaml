@@ -1,0 +1,51 @@
+---
+version: '3'
+services:
+  gitlab:
+    image: 'gitlab/gitlab-ce:13.11.4-ce.0'
+    container_name: 'gitlab'
+    environment:
+      TZ: 'Asia/Shanghai'
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url '192.168.77.130'
+        gitlab_rails['time_zone'] = 'Asia/Shanghai'
+        gitlab_rails['gitlab_shell_ssh_port'] = 10022
+        # db setting
+        postgresql['enable'] = false
+        gitlab_rails['db_adapter'] = 'postgresql'
+        gitlab_rails['db_encoding'] = 'utf8'
+        gitlab_rails['db_host'] = '192.168.77.130'
+        gitlab_rails['db_database'] = "gitlab"
+        gitlab_rails['db_port'] = 5432
+        gitlab_rails['db_username'] = 'root'
+        gitlab_rails['db_password'] = 'Ab123456'
+        # redis
+        redis['enable'] = false
+        gitlab_rails['redis_host'] = '192.168.77.130'
+        gitlab_rails['redis_port'] = 6379
+        gitlab_rails['redis_ssl'] = false
+        gitlab_rails['redis_password'] = 'Ab123456'
+        gitlab_rails['redis_database'] = 0
+        gitlab_rails['redis_enable_client'] = false
+    ports:
+      - '80:80'
+      - '443:443'
+      - '10022:22'
+    volumes:
+      - ./gitlab_config:/etc/gitlab
+      - ./gitlab_logs:/var/log/gitlab
+      - ./gitlab_data:/var/opt/gitlab
+      - /etc/localtime:/etc/localtime:ro
+    privileged: true
+    restart: always
+
+  runner:
+    image: gitlab/gitlab-runner:v13.11.0
+    depends_on:
+      - "gitlab"
+    volumes:
+      - ./gitlab_runner:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/ssl/certs:/etc/ssl/certs
+      - /etc/localtime:/etc/localtime:ro
+    restart: always
