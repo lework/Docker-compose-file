@@ -31,7 +31,7 @@ services:
       - loki
 
   grafana:
-    image: grafana/grafana:8.1.0
+    image: grafana/grafana:8.3.1
     restart: always
     volumes:
       - grafana_data:/var/lib/grafana

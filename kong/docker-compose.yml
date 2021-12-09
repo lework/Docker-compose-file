@@ -86,6 +86,7 @@ services:
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_PROXY_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ANONYMOUS_REPORTS: "off"
     depends_on:
       - kong-database
     healthcheck:

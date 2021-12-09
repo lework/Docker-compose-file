@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  rancher:
+    container_name: rancher
+    image: rancher/rancher:v2.6-head
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - ./rancher_data:/var/lib/rancher
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - "80:80"
+      - "443:443"

@@ -1,0 +1,16 @@
+version: '3'
+services:
+  bitwarden: 
+    image: bitwardenrs/server:1.21.0
+    container_name: bitwarden
+    restart: always
+    volumes:
+      - ./data:/data # 資料保存位置，修改./data 成自己想要存放的地方
+    environment:
+      - SIGNUPS_ALLOWED=true
+      - DOMAIN=http(s)://example.com
+      - DATABASE_URL= ~/example/bitwardendb/bitwarden.db
+      - ROCKET_WORKERS=10
+      - WEB_VAULT_ENABLED=true
+    ports:
+      - "3333:80" # 映射端口3333

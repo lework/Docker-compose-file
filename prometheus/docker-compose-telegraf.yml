@@ -1,0 +1,48 @@
+version: '3'
+
+networks:
+  monitor:
+
+services:
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v2.30.3
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime:ro
+      - ./prometheus_data/data:/prometheus
+      - ./prometheus_data/etc:/etc/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=180d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-admin-api'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090:9090
+    networks:
+      - monitor
+    restart: always
+
+  telegraf:
+    container_name: telegraf
+    image: telegraf:1.20.3
+    environment:
+      HOST_ETC: /hostfs/etc
+      HOST_PROC: /hostfs/proc
+      HOST_SYS: /hostfs/sys
+      HOST_VAR: /hostfs/var
+      HOST_RUN: /hostfs/run
+      HOST_MOUNT_PREFIX: /hostfs
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime:ro
+      # Mount for telegraf configuration
+      - ./telegraf_data/conf/:/etc/telegraf/
+      # Mount for Docker API access
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount the host filesystems 
+      - /:/hostfs:ro
+    networks:
+      - monitor
+    restart: always

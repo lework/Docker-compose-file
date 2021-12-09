@@ -56,6 +56,7 @@ services:
     container_name: zabbix-web-nginx-mysql
     image: zabbix/zabbix-web-nginx-mysql:centos-5.4.6
     volumes:
+      - "./wqy-microhei.ttc:/usr/share/zabbix/assets/fonts/DejaVuSans.ttf"
       - "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime"
     network_mode: host
     #ports:
@@ -109,7 +110,7 @@ services:
       - /var/run:/var/run
     environment:
       - ZBX_HOSTNAME=Zabbix server
-      - ZBX_SERVER_HOST=127.0.0.1
+      - ZBX_SERVER_HOST=183.67.48.242
     depends_on:
       - zabbix-mysql
       - zabbix-server-mysql
