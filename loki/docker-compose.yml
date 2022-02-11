@@ -1,0 +1,59 @@
+version: "3"
+
+services:
+  init:
+    image: grafana/loki:2.4.2
+    user: root
+    entrypoint: ["sh", "-c", "chown 10001:10001 /loki; chown 472 /var/lib/grafana"]
+    volumes:
+      - ./loki_data:/loki
+      - ./grafana_data:/var/lib/grafana
+
+  loki:
+    container_name: loki
+    image: grafana/loki:2.4.2
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki_data:/loki
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: always
+
+  loki-promtail:
+    container_name: loki-promtail
+    image: grafana/promtail:2.4.2
+    volumes:
+      - /var/log:/var/log
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    command: -config.file=/etc/promtail/config.yml
+    restart: always
+
+  loki-grafana:
+    container_name: loki-grafana
+    image: grafana/grafana:8.3.4
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+      - GF_EXPLORE_ENABLED=true
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+        datasources:
+          - name: Loki
+            type: loki
+            access: proxy
+            url: http://loki:3100
+        EOF
+        /run.sh
+    restart: always

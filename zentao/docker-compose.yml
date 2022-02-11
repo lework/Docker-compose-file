@@ -12,3 +12,5 @@ services:
     restart: on-failure
     environment:
       MYSQL_ROOT_PASSWORD: 123456
+
+## LDAP https://github.com/ShoJinto/zentao-ldap

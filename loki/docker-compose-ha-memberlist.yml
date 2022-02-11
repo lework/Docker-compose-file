@@ -1,0 +1,138 @@
+version: "3.8"
+
+networks:
+  loki:
+
+services:
+
+  # Since the Loki containers are running as user 10001 and the mounted data volume is owned by root,
+  # Loki would not have permissions to create the directories.
+  # Therefore the init container changes permissions of the mounted directory.
+  init:
+    image: grafana/loki:2.4.2
+    user: root
+    entrypoint: ["sh", "-c", "chown 10001:10001 /loki; chown 472 /var/lib/grafana"]
+    volumes:
+      - ./loki_data:/loki
+      - ./grafana_data:/var/lib/grafana
+    networks:
+      - loki
+
+  loki-grafana:
+    container_name: loki-grafana
+    image: grafana/grafana:8.3.4
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+      - GF_EXPLORE_ENABLED=true
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+        datasources:
+          - name: Loki
+            type: loki
+            access: proxy
+            url: http://loki-gateway:80
+        EOF
+        /run.sh
+    restart: always
+    networks:
+      - loki
+
+  loki-promtail:
+    container_name: loki-promtail
+    image: grafana/promtail:2.4.2
+    volumes:
+      - /var/log:/var/log
+      - ./ha-memberlist-config:/etc/promtail/
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    ports:
+      - "9080:9080"
+    command: -config.file=/etc/promtail/promtail-gateway.yaml
+    restart: always
+    depends_on:
+      - loki-1
+      - loki-2
+      - loki-3
+    networks:
+      - loki
+
+  loki-gateway:
+    container_name: loki-gateway
+    image: nginx:1.19
+    volumes:
+      - ./ha-memberlist-config/nginx-loki-gateway.conf:/etc/nginx/nginx.conf
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    restart: always
+    ports:
+      - "80"
+      - "3100"
+    networks:
+      - loki
+
+  loki-frontend:
+    container_name: loki-frontend
+    image: grafana/loki:2.4.2
+    volumes:
+      - ./ha-memberlist-config:/etc/loki/
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    ports:
+      - "3100"
+    command: "-config.file=/etc/loki/loki-docker-memberlist-boltdb-shipper.yaml -target=query-frontend -frontend.downstream-url=http://loki-gateway:3100"
+    networks:
+      - loki
+
+  loki-1:
+    container_name: loki-1
+    image: grafana/loki:2.4.2
+    volumes:
+      - ./ha-memberlist-config:/etc/loki/
+      - ./loki_data:/loki
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    ports:
+      - "3100"
+      - "7946"
+    command: "-config.file=/etc/loki/loki-docker-memberlist-boltdb-shipper.yaml -target=all"
+    networks:
+      - loki
+    restart: always
+
+  loki-2:
+    container_name: loki-2
+    image: grafana/loki:2.4.2
+    volumes:
+      - ./ha-memberlist-config:/etc/loki/
+      - ./loki_data:/loki
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    ports:
+      - "3100"
+      - "7946"
+    command: "-config.file=/etc/loki/loki-docker-memberlist-boltdb-shipper.yaml -target=all"
+    networks:
+      - loki
+    restart: always
+
+  loki-3:
+    container_name: loki-3
+    image: grafana/loki:2.4.2
+    volumes:
+      - ./ha-memberlist-config:/etc/loki/
+      - ./loki_data:/loki
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    ports:
+      - "3100"
+      - "7946"
+    command: "-config.file=/etc/loki/loki-docker-memberlist-boltdb-shipper.yaml -target=all"
+    networks:
+      - loki
+    restart: always

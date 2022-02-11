@@ -1,0 +1,157 @@
+version: "3.8"
+
+networks:
+  loki:
+
+services:
+  # Since the Loki containers are running as user 10001 and the mounted data volume is owned by root,
+  # Loki would not have permissions to create the directories.
+  # Therefore the init container changes permissions of the mounted directory.
+  init:
+    image: grafana/grafana:8.3.4
+    user: root
+    entrypoint: ["sh", "-c", "chown 472 /var/lib/grafana"]
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+    logging: &logging
+      # docker plugin install grafana/loki-docker-driver:latest --alias loki-compose --grant-all-permissions
+      driver: loki-compose
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-retries: "1"
+        loki-tenant-id: "tenant1"
+    networks: &loki-dns
+      loki:
+        aliases:
+          - loki
+
+  loki-minio:
+    container_name: loki-minio
+    image: minio/minio:RELEASE.2022-02-07T08-17-33Z
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /data/loki-data && \
+        mkdir -p /data/loki-ruler && \
+        minio server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=loki
+      - MINIO_ROOT_PASSWORD=supersecret
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
+      - MINIO_UPDATE=off
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./minio_data:/data
+    restart: always
+    logging:
+      <<: *logging
+    networks:
+      <<: *loki-dns
+
+  loki-read:
+    container_name: loki-read
+    image: grafana/loki:2.4.2
+    command: "-config.file=/etc/loki/config.yaml -target=read"
+    volumes:
+      - ./s3-config/loki-s3.yaml:/etc/loki/config.yaml
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    restart: always
+    depends_on:
+      - loki-minio
+    logging:
+      <<: *logging
+    networks:
+      <<: *loki-dns
+
+  loki-write:
+    container_name: loki-write
+    image: grafana/loki:2.4.2
+    command: "-config.file=/etc/loki/config.yaml -target=write"
+    volumes:
+      - ./s3-config/loki-s3.yaml:/etc/loki/config.yaml
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    restart: always
+    depends_on:
+      - loki-minio
+    logging:
+      <<: *logging
+    networks:
+      <<: *loki-dns
+
+  loki-promtail:
+    container_name: loki-promtail
+    image: grafana/promtail:2.4.2
+    volumes:
+      - /var/log:/var/log
+      - ./s3-config:/etc/promtail/
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    ports:
+      - "9080:9080"
+    command: -config.file=/etc/promtail/promtail-gateway.yaml
+    restart: always
+    depends_on:
+      - loki-read
+      - loki-write
+    logging:
+      <<: *logging
+    networks:
+      <<: *loki-dns
+
+  loki-gateway:
+    container_name: loki-gateway
+    image: nginx:1.19
+    volumes:
+      - ./s3-config/nginx-loki-gateway.conf:/etc/nginx/nginx.conf
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    restart: always
+    ports:
+      - "3100:3100"
+    depends_on:
+      - loki-read
+      - loki-write
+    logging:
+      <<: *logging
+    networks:
+      <<: *loki-dns
+
+  loki-grafana:
+    container_name: loki-grafana
+    image: grafana/grafana:8.3.4
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+      - GF_EXPLORE_ENABLED=true
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+        datasources:
+          - name: Loki
+            type: loki
+            access: proxy
+            url: http://loki-gateway:3100
+            jsonData:
+              httpHeaderName1: "X-Scope-OrgID"
+            secureJsonData:
+              httpHeaderValue1: "tenant1"
+        EOF
+        /run.sh
+    restart: always
+    depends_on:
+      - loki-gateway
+    logging:
+      <<: *logging
+    networks:
+      <<: *loki-dns
