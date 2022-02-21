@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  timescaledb:
+    container_name: timescaledb
+    image: timescale/timescaledb:2.5.2-pg13
+    volumes:
+      - "./timescaledb_data:/var/lib/postgresql/data"
+      - "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime"
+    command: ["-c", "max_connections=1000"]
+    environment:
+      POSTGRES_DB: admin
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 123456
+    network_mode: host
+    #ports:
+    #  - "5432:5432"
+    restart: always

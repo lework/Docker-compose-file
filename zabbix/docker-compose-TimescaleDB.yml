@@ -1,0 +1,119 @@
+version: '3'
+
+services:
+  zabbix-timescaledb:
+    container_name: zabbix-timescaledb
+    image: timescale/timescaledb:2.5.2-pg13
+    volumes:
+      - "./timescaledb_data:/var/lib/postgresql/data"
+      - "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime"
+    command: ["-c", "max_connections=1000"]
+    network_mode: host
+    #ports:
+    #  - "5432:5432"
+    restart: always
+    environment:
+      POSTGRES_DB: zabbix
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: 123456
+ 
+  zabbix-server-pgsql:
+    container_name: zabbix-server-pgsql
+    image: zabbix/zabbix-server-pgsql:ubuntu-6.0.0
+    volumes:
+      - "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime"
+#    ulimits:
+#     nproc: 65535
+#     nofile:
+#      soft: 20000
+#      hard: 40000
+#    sysctls:
+#     - net.ipv4.ip_local_port_range=1024 65000
+#     - net.ipv4.conf.all.accept_redirects=0
+#     - net.ipv4.conf.all.secure_redirects=0
+#     - net.ipv4.conf.all.send_redirects=0
+    network_mode: host
+    user: root
+    privileged: true
+    #ports:
+    # - "10051:10051"
+#    restart: always
+    environment:
+      DB_SERVER_HOST: 127.0.0.1
+      DB_SERVER_PORT: 5432
+      POSTGRES_DB: zabbix
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: 123456
+    depends_on:
+     - zabbix-timescaledb
+
+  # web login： Admin/zabbix
+  zabbix-web-nginx-pgsql:
+    container_name: zabbix-web-nginx-pgsql
+    image: zabbix/zabbix-web-nginx-pgsql:ubuntu-6.0.0
+    volumes:
+      - "./wqy-microhei.ttc:/usr/share/zabbix/assets/fonts/DejaVuSans.ttf"
+      - "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime"
+    network_mode: host
+    #ports:
+    # - "80:8080"
+    # - "443:8443"
+    restart: always
+    environment:
+      PHP_TZ: Asia/Shanghai
+      DB_SERVER_HOST: 127.0.0.1
+      DB_SERVER_PORT: 5432
+      POSTGRES_DB: zabbix
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: 123456
+#    sysctls:
+#     - net.core.somaxconn=65535
+#    healthcheck:
+#     test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+#     interval: 10s
+#     timeout: 5s
+#     retries: 3
+    depends_on:
+      - zabbix-timescaledb
+      - zabbix-server-pgsql
+ 
+  zabbix-grafana:
+    container_name: zabbix-grafana
+    image: grafana/grafana:8.3.4
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    network_mode: host
+    restart: always
+    user: root
+    privileged: true
+    #ports:
+    #  - "3000:3000"
+    environment: 
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+      - GF_EXPLORE_ENABLED=true
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
+      - GF_INSTALL_PLUGINS=alexanderzobnin-zabbix-app
+    depends_on:
+      - zabbix-timescaledb
+      - zabbix-server-pgsql
+
+  zabbix-agent:
+    container_name: zabbix-agent
+    image: zabbix/zabbix-agent:ubuntu-6.0.0
+    user: root
+    pid: host
+    network_mode: host
+    #ports:
+    # - "10050:10050"
+    restart: always
+    privileged: true
+    volumes:
+      - /var/run:/var/run
+    environment:
+      - ZBX_HOSTNAME=Zabbix server
+      - ZBX_SERVER_HOST=127.0.0.1
+    depends_on:
+      - zabbix-timescaledb
+      - zabbix-server-pgsql

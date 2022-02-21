@@ -4,6 +4,8 @@ services:
   grafana:
     image: grafana/grafana:8.3.1
     restart: always
+    user: root
+    privileged: true
     volumes:
       - ./grafana_data:/var/lib/grafana
     environment:
