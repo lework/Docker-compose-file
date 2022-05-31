@@ -1,0 +1,24 @@
+version: '3'
+services:
+  nginx-proxy-manager:
+    container_name: nginx-proxy-manager
+    image: 'jc21/nginx-proxy-manager:2.9.18'
+    restart: always
+    environment:
+      DISABLE_IPV6: 'true'
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    entrypoint: bash
+    command: 
+      - "-c"
+      - "pip config set global.index-url https://mirrors.aliyun.com/pypi/simple && exec /init"
+    volumes:
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    healthcheck:
+      test: ["CMD", "/bin/check-health"]
+      interval: 10s
+      timeout: 3s

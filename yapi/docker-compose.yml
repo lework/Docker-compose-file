@@ -44,3 +44,5 @@ services:
       - mongo
     networks: ["yapi"]
     restart: always
+
+# admin@admin.com yapi.pro

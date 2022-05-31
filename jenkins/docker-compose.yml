@@ -1,7 +1,7 @@
 version: '3'
 services:
   jenkins:
-    image: jenkins/jenkins:lts
+    image: jenkins/jenkins:2.332.1-lts
     container_name: jenkins
     user: root
     ports:
@@ -11,11 +11,11 @@ services:
       - ./jenkins_data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
       - /usr/bin/docker:/usr/bin/docker
-      - /etc/localtime:/etc/localtime
-    restart: always
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
     environment:
       - TZ=Asia/Shanghai
       - LANG=en_US.UTF-8
-      - "JAVA_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 -Dhudson.model.DownloadService.noSignatureCheck=true"
-      - JENKINS_UC=https://cdn.jsdelivr.net/gh/lework/jenkins-update-center/updates/tsinghua/update-center.json
+      - "JAVA_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 -Dhudson.model.DownloadService.noSignatureCheck=true -Dhudson.model.UpdateCenter.updateCenterUrl=https://cdn.jsdelivr.net/gh/lework/jenkins-update-center/updates/tencent/"
+      - JENKINS_UC=https://cdn.jsdelivr.net/gh/lework/jenkins-update-center/updates/tencent
+      - JENKINS_UC_DOWNLOAD=https://mirrors.tuna.tsinghua.edu.cn/jenkins/
     restart: always

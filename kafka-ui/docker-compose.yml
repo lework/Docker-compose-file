@@ -1,0 +1,14 @@
+version: '3'
+services:
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.4.0
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=test
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=127.0.0.1:9092
+      - KAFKA_CLUSTERS_0_READONLY=true
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    restart: always

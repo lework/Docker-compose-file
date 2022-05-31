@@ -1,0 +1,20 @@
+version: '3.1'
+
+services:
+  verdaccio:
+    image: verdaccio/verdaccio:5.10.0
+    container_name: "verdaccio"
+    environment:
+      - TZ=Asia/Shanghai
+      - VERDACCIO_PORT=4873
+    ports:
+      - "4873:4873"
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - "./storage:/verdaccio/storage"
+      - "./conf:/verdaccio/conf"
+      - "./plugins:/verdaccio/plugins" 
+    restart: always
+    
+    
+# chown 10001 -R plugins storage conf

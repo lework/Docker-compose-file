@@ -1,0 +1,36 @@
+version: "3"
+
+services:
+  flarum:
+    image: mondedie/flarum:1.2.0
+    container_name: flarum
+    environment:
+      - DEBUG=false
+      - FORUM_URL=https://test.com
+      - DB_HOST=mysql
+      - DB_NAME=flarum
+      - DB_USER=flarum
+      - DB_PASS=123456
+      - DB_PREF=flarum_
+      - DB_PORT=3306
+      - FLARUM_ADMIN_USER=admin
+      - FLARUM_ADMIN_PASS=123456
+      - FLARUM_ADMIN_MAIL=admin@test.com
+      - FLARUM_TITLE=Flarum
+    volumes:
+      - ./flarum/assets:/flarum/app/public/assets
+      - ./flarum/extensions:/flarum/app/extensions
+      - ./flarum/storage/logs:/flarum/app/storage/logs
+      - ./flarum/nginx:/etc/nginx/flarum
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    restart: always
+	
+	
+# https://discuss.flarum.org.cn/
+# docker exec -ti flarum extension require flarum-lang/chinese-simplified
+# docker exec -ti flarum php flarum cache:clear
+# docker exec -ti flarum extension require clarkwinkelmann/flarum-ext-emojionearea
+# docker exec -ti flarum extension require fof/links
+# docker exec -ti flarum extension require fof/user-directory
+# docker exec -ti flarum extension require fof/upload
+# docker exec -ti flarum extension require squeevee/flarum-ext-fancybox
