@@ -1,0 +1,37 @@
+version: '3.9'
+
+services:
+  healthchecks:
+    image: healthchecks/healthchecks
+    container_name: hc_postgres
+    restart: unless-stopped
+    environment:
+      DB: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: healthchecks_user
+      DB_NAME: healthchecks_db
+      DB_PASSWORD: healthchecks_pass
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    ports:
+      - 9000:8000
+    depends_on:
+        - postgres
+
+  postgres:
+    image: postgres
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: healthchecks_db
+      POSTGRES_USER: healthchecks_user
+      POSTGRES_PASSWORD: healthchecks_pass
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - healthchecks_postgres:/var/lib/postgresql/data/
+
+volumes:
+  healthchecks_postgres:

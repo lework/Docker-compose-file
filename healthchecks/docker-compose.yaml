@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+  grafana:
+    image: grafana/grafana:8.3.1
+    restart: always
+    user: root
+    privileged: true
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+      - GF_EXPLORE_ENABLED=true
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=123456
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    ports:
+      - "3000:3000"

@@ -1,0 +1,9 @@
+version: "3"
+services:
+  transfer:
+    container_name: transfer
+    image: dutchcoders/transfer.sh:latest
+    command: --provider local --basedir /data/ --temp-path /data/
+    restart: always
+    volumes:
+      - ./transfer-data:/data

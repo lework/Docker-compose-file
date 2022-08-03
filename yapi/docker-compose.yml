@@ -46,3 +46,5 @@ services:
     restart: always
 
 # admin@admin.com yapi.pro
+# 
+# db.user.update( {_id: 17} ,{ $set: {role: 'admin'}});
