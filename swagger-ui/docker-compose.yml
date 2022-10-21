@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  swagger-ui:
+    container_name: swagger-ui
+    image: swaggerapi/swagger-ui:v4.14.0
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+    - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    restart: always
