@@ -2,7 +2,7 @@ version: '3'
 services:
   nginx-proxy-manager:
     container_name: nginx-proxy-manager
-    image: 'jc21/nginx-proxy-manager:2.9.18'
+    image: 'jc21/nginx-proxy-manager:2.9.22'
     restart: always
     environment:
       DISABLE_IPV6: 'true'
@@ -10,6 +10,7 @@ services:
       - '80:80'
       - '81:81'
       - '443:443'
+    # network_mode: host
     entrypoint: bash
     command: 
       - "-c"

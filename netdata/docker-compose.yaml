@@ -1,0 +1,19 @@
+version: "3"
+services:
+  netdata:
+    container_name: netdata
+    image: netdata/netdata
+    ports:
+    - 19999:19999
+    volumes:
+    - /etc/passwd:/host/etc/passwd:ro
+    - /etc/group:/host/etc/group:ro
+    - /proc:/host/proc:ro
+    - /sys:/host/sys:ro
+    - /etc/os-release:/host/etc/os-release:ro
+    - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    restart: always
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor=unconfined
