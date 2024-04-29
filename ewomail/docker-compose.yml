@@ -1,0 +1,26 @@
+version: '3'
+services:
+  ewomail:
+    container_name: ewomail
+    image: bestwu/ewomail:latest
+    hostname: mail.test.com
+    volumes:
+    - ./mysql:/ewomail/mysql/data
+    - ./vmail:/ewomail/mail
+    - ./rainloop:/ewomail/www/rainloop/data
+    - ./ssl/certs/:/etc/ssl/certs/
+    - ./ssl/private/:/etc/ssl/private/
+    - ./ssl/dkim/:/ewomail/dkim/
+    - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    ports:
+    - "25:25"
+    - "143:143"
+    - "587:587"
+    - "993:993"
+    - "109:109"
+    - "110:110"
+    - "465:465"
+    - "995:995"
+    - "127.0.0.1:8002:80"
+    - "8001:8080"
+    restart: always

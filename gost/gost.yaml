@@ -1,0 +1,23 @@
+services:
+- name: https
+  addr: :443
+  handler:
+    type: tcp
+    metadata:
+      sniffing: true
+  listener:
+    type: tcp
+  forwarder:
+    nodes:
+    - name: google
+      addr: www.google.com:443
+      host: www.google.com
+    - name: github
+      addr: github.com:443
+      host: "*.github.com"
+    - name: chatgpt
+      addr: chat.openai.com:443
+      host: chat.openai.com
+    - name: chatgpt-api
+      addr: api.openai.com:443
+      host: api.openai.com

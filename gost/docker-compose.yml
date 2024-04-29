@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  gost:
+    container_name: gost
+    image: gogost/gost
+    restart: always
+    volumes:
+      - ./gost.yaml:/etc/gost/gost.yaml
+    ports:
+      - '443:443'

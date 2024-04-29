@@ -1,0 +1,18 @@
+version: '3'
+services:
+  hfish:
+    container_name: hfish
+    image: threatbook/hfish-server:latest
+    environment:
+      - USERNAME=admin           # 后台管理系统登录账号
+      - PASSWORD=2JnT6Oc33cD     # 后台管理系统登录密码
+    volumes:
+      - "./hfish_data:/usr/share/hfish"
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    network_mode: host
+    privileged: true
+    restart: always
+    
+    
+    
+# https://yourip:4433/web  admin HFish2021

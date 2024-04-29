@@ -1,0 +1,14 @@
+version: '3'
+services:
+  gophish:
+    container_name: gophish
+    image: gophish/gophish:latest
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    ports:
+    - "3333:3333"
+    - "8003:80"
+    - "8004:8080"
+    restart: always
+
+# https://yourip:3333 
