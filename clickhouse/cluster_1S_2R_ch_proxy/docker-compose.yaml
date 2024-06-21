@@ -1,0 +1,132 @@
+version: "3.7"
+services:
+  clickhouse-01:
+    container_name: clickhouse-01
+    image: clickhouse/clickhouse-server:24.4.3.25-alpine
+#    user: "101:101"
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./clickhouse-01/config.d/config.xml:/etc/clickhouse-server/config.d/config.xml
+      - ./clickhouse-01/users.d/users.xml:/etc/clickhouse-server/users.d/users.xml
+      - ./clickhouse-01/data:/var/lib/clickhouse
+      - ./clickhouse-01/logs:/var/log/clickhouse-server
+    ports:
+      - "127.0.0.1:8123:8123"
+      - "127.0.0.1:9000:9000"
+    networks:
+      cluster_1S_2R_ch_proxy:
+        ipv4_address: 192.168.5.1
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:8123/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      - clickhouse-keeper-01
+      - clickhouse-keeper-02
+      - clickhouse-keeper-03
+  clickhouse-02:
+    container_name: clickhouse-02
+    image: clickhouse/clickhouse-server:24.4.3.25-alpine
+#    user: "101:101"
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./clickhouse-02/config.d/config.xml:/etc/clickhouse-server/config.d/config.xml
+      - ./clickhouse-02/users.d/users.xml:/etc/clickhouse-server/users.d/users.xml
+      - ./clickhouse-02/data:/var/lib/clickhouse
+      - ./clickhouse-02/logs:/var/log/clickhouse-server
+    ports:
+      - "127.0.0.1:8124:8123"
+      - "127.0.0.1:9001:9000"
+    networks:
+      cluster_1S_2R_ch_proxy:
+        ipv4_address: 192.168.5.2
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:8123/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      - clickhouse-keeper-01
+      - clickhouse-keeper-02
+      - clickhouse-keeper-03
+  clickhouse-keeper-01:
+    image: "clickhouse/clickhouse-keeper:24.4.3.25-alpine"
+#    user: "101:101"
+    container_name: clickhouse-keeper-01
+    hostname: clickhouse-keeper-01
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./clickhouse-keeper-01/config/keeper_config.xml:/etc/clickhouse-keeper/keeper_config.xml
+      - ./clickhouse-keeper-01/data:/var/lib/clickhouse-keeper
+      - ./clickhouse-keeper-01/logs:/var/log/clickhouse-keeper
+    ports:
+        - "127.0.0.1:9181:9181"
+    networks:
+      cluster_1S_2R_ch_proxy:
+        ipv4_address: 192.168.5.5
+  clickhouse-keeper-02:
+    image: "clickhouse/clickhouse-keeper:24.4.3.25-alpine"
+ #   user: "101:101"
+    container_name: clickhouse-keeper-02
+    hostname: clickhouse-keeper-02
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./clickhouse-keeper-02/config/keeper_config.xml:/etc/clickhouse-keeper/keeper_config.xml
+      - ./clickhouse-keeper-02/data:/var/lib/clickhouse-keeper
+      - ./clickhouse-keeper-02/logs:/var/log/clickhouse-keeper
+    networks:
+      cluster_1S_2R_ch_proxy:
+        ipv4_address: 192.168.5.6
+    ports:
+        - "127.0.0.1:9182:9181"
+  clickhouse-keeper-03:
+    image: "clickhouse/clickhouse-keeper:24.4.3.25-alpine"
+#    user: "101:101"
+    container_name: clickhouse-keeper-03
+    hostname: clickhouse-keeper-03
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./clickhouse-keeper-03/config/keeper_config.xml:/etc/clickhouse-keeper/keeper_config.xml
+      - ./clickhouse-keeper-03/data:/var/lib/clickhouse-keeper
+      - ./clickhouse-keeper-03/logs:/var/log/clickhouse-keeper
+    networks:
+      cluster_1S_2R_ch_proxy:
+        ipv4_address: 192.168.5.7
+    ports:
+        - "127.0.0.1:9183:9181"
+  ch-proxy:
+    image: contentsquareplatform/chproxy:v1.26.4
+    platform: linux/amd64
+    container_name: ch-proxy
+    hostname: ch-proxy
+    networks:
+      cluster_1S_2R_ch_proxy:
+        ipv4_address: 192.168.5.10
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./ch-proxy/config/config.yml:/opt/config.yml
+    depends_on:
+      - clickhouse-01
+      - clickhouse-02
+    command: [-config, /opt/config.yml]  
+
+networks:
+  cluster_1S_2R_ch_proxy:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.5.0/24
+          gateway: 192.168.5.254

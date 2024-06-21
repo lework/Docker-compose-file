@@ -3,10 +3,11 @@ version: "3"
 services:
   uptime-kuma:
     container_name: uptime-kuma
-    image: louislam/uptime-kuma:1.10.0-alpine
+    image:  louislam/uptime-kuma:1.23.13-alpine
     restart: always
     volumes:
       - ./uptime_data:/app/data
+      - "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime"
     environment:
       - TZ=Asia/Shanghai
       - LANG=zh_CN.UTF-8

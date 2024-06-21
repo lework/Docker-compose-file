@@ -1,7 +1,7 @@
 version: '3'
 services:
   jenkins:
-    image: jenkins/jenkins:2.332.1-lts
+    image: jenkins/jenkins:2.440.3-lts
     container_name: jenkins
     user: root
     ports:
