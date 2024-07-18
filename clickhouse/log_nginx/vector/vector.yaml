@@ -1,0 +1,44 @@
+api:
+  enabled: true
+  address: 0.0.0.0:8686
+
+
+sources:
+  nginx_logs:
+    type: file
+    include:
+      - /var/log/nginx/access.log
+# .timestamp = parse_timestamp(.timestamp, "%Y-%m-%d %H:%M:%S %z") ?? now()
+transforms:
+  nginx_parser:
+    type: remap
+    inputs:
+      - nginx_logs
+    source: |-
+      . = parse_json!(.message)
+      .timestamp, err = replace(.timestamp, "+08:00", "")
+
+sinks:
+  print:
+    type: console
+    inputs:
+      - nginx_parser
+    encoding:
+      codec: json
+  clickhouse:
+    type: clickhouse
+    inputs:
+      - nginx_parser
+    endpoint: http://clickhouse:8123
+    database: logs
+    table: nginx_access_log
+    auth:
+      strategy: basic
+      user: default
+      password: "123456"
+    skip_unknown_fields: true
+    healthcheck: true
+    compression: gzip
+    format: json_each_row
+    encoding:
+      timestamp_format: unix

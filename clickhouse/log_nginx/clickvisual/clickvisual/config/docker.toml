@@ -1,0 +1,94 @@
+[app]
+secretKey = "secretKey" # hashStatecode
+rootURL = "http://localhost:19001"
+baseURL = "/api/admin/login/"
+permissionFile = './config/resource.yaml'
+
+[casbin.rule]
+path = "./config/rbac.conf"
+
+[server.http]
+host = "0.0.0.0"
+port = 19001
+embedPath = "dist"
+maxAge = 86400
+
+[server.governor]
+host = "0.0.0.0"
+port = 19011
+
+[logger]
+level = "debug"
+name = "clickvisual.log"
+
+[mysql]
+connMaxLifetime = "300s"
+debug = true
+dsn = "root:shimo@tcp(clickvisual-mysql:3306)/clickvisual?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&readTimeout=1s&timeout=1s&writeTimeout=3s"
+level = "panic"
+maxIdleConns = 50
+maxOpenConns = 100
+
+[auth]
+mode = "memstore" # redis memstore
+name = "clickvisual_session"
+debug = true
+Keypairs = "secret"
+# if use mode redis
+# redisSize = 10
+# redisNetwork = "tcp"
+# redisAddr = ""
+# redisPassword = ""
+
+[auth.anonymous]
+# enable anonymous access
+enabled = false
+
+[auth.proxy]
+enabled = false
+isAutoLogin = false
+headerName = "X-CLICKVISUAL-USER"
+headerNickName = "X-CLICKVISUAL-NICKNAME"
+rootTokenKey = "X-CLICKVISUAL-TOKEN"
+rootTokenValue = "xxx"
+
+[[auth.tps]]
+typ = "github"
+enable = true
+allowSignUp = true
+clientId = ""
+clientSecret = ""
+scopes = ["user:email", "read:org"]
+authUrl = "https://github.com/login/oauth/authorize"
+tokenUrl = "https://github.com/login/oauth/access_token"
+apiUrl = "https://api.github.com/user"
+allowedDomains = []
+teamIds = []
+allowedOrganizations = []
+
+[[auth.tps]]
+typ = "gitlab"
+enable = true
+allowSignUp = true
+clientId = ""
+clientSecret = ""
+scopes = ["api"]
+authUrl = "https://gitlab.com/oauth/authorize"
+tokenUrl = "https://gitlab.com/oauth/token"
+apiUrl = "https://gitlab.com/api/v4"
+allowedDomains = []
+teamIds = []
+allowedOrganizations = []
+
+[prom2click]
+enable = true
+
+[[prom2click.cfgs]]
+host = "127.0.0.1"
+port = 19006
+clickhouseDSN = "tcp://clickhouse:9000?username=default&password=123456&read_timeout=10&write_timeout=10&debug=true"
+clickhouseDB = "metrics"
+clickhouseTable = "samples"
+
+[defaultCh]
+dsn="clickhouse://default:123456@clickhouse:9000/logs?max_execution_time=60"

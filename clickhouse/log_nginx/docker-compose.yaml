@@ -1,0 +1,116 @@
+version: "3.7"
+services:
+  clickhouse:
+    container_name: clickhouse
+    image: clickhouse/clickhouse-server:24.4.3.25-alpine
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./clickhouse/config.d/config.xml:/etc/clickhouse-server/config.d/config.xml
+      - ./clickhouse/users.d/users.xml:/etc/clickhouse-server/users.d/users.xml
+      - ./clickhouse/initdb.d:/docker-entrypoint-initdb.d
+      - ./clickhouse/data:/var/lib/clickhouse
+      - ./clickhouse/logs:/var/log/clickhouse-server
+    environment:
+      - CLICKHOUSE_DB=logs
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=123456
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:8123/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  nginx:
+    container_name: nginx
+    image: nginx:1.27.0-alpine3.19-slim
+    restart: always
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/logs/:/var/log/nginx
+    environment:
+      TZ: Asia/Shanghai
+      LANG: zh_CN.UTF-8
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost"]
+      interval: 1m
+      timeout: 6s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      - clickhouse
+
+  vector:
+    image: timberio/vector:0.39.0-alpine
+    container_name: vector
+    hostname: vector
+    ports:
+      - "8383:8383"
+      - "8686:8686"
+    volumes:
+      - "./nginx/logs:/var/log/nginx:ro"
+      - "./vector/vector.yaml:/etc/vector/vector.yaml:ro"
+    environment:
+      - VECTOR_LOG=info
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8686/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - clickhouse
+      - nginx
+
+  clickvisual-mysql:
+    image: mysql:5.7.37
+    container_name: clickvisual-mysql
+    hostname: clickvisual-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: shimo
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: clickvisual
+    command: [
+        '--character-set-server=utf8mb4',
+        '--collation-server=utf8mb4_general_ci'
+    ]
+    ports:
+      - 13306:3306
+    volumes:
+      - ./clickvisual/mysql/data:/var/lib/mysql
+      - "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime"
+    restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", '-p${MYSQL_ROOT_PASSWORD}']
+      timeout: 20s
+      retries: 10
+
+  clickvisual:
+    image: clickvisual/clickvisual:master
+    container_name: clickvisual
+    hostname: clickvisual
+    environment:
+      EGO_CONFIG_PATH: /clickvisual/config/docker.toml
+      EGO_LOG_WRITER: stderr
+    volumes:
+      - ./clickvisual/clickvisual/config:/clickvisual/config
+      - ./clickvisual/clickvisual/rules:/clickvisual/rules
+      - "/usr/share/zoneinfo/Asia/Shanghai:/etc/localtime"
+    ports:
+      - "19001:19001"
+      - "19006:19006"
+    command: [ '/bin/sh', '-c', './bin/clickvisual server' ]
+    restart: always
+    depends_on:
+      - clickvisual-mysql
+      - clickhouse
