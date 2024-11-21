@@ -1,0 +1,150 @@
+services:
+  netbox: &netbox
+    image: docker.io/netboxcommunity/netbox:v4.1.6
+    depends_on:
+      - postgres
+      - redis
+      - redis-cache
+    environment:
+      TIME_ZONE: Asia/Shanghai
+      CORS_ORIGIN_ALLOW_ALL: "True"
+      DB_HOST: postgres
+      DB_NAME: netbox
+      DB_PASSWORD: 123456
+      DB_USER: netbox
+      EMAIL_FROM: netbox@bar.com
+      EMAIL_PASSWORD: 123456
+      EMAIL_PORT: 25
+      EMAIL_SERVER: localhost
+      EMAIL_SSL_CERTFILE: 
+      EMAIL_SSL_KEYFILE: 
+      EMAIL_TIMEOUT: 5
+      EMAIL_USERNAME: netbox
+      EMAIL_USE_SSL: false
+      EMAIL_USE_TLS: false
+      GRAPHQL_ENABLED: true
+      HOUSEKEEPING_INTERVAL: 86400
+      MEDIA_ROOT: /opt/netbox/netbox/media
+      METRICS_ENABLED: false
+      REDIS_CACHE_DATABASE: 1
+      REDIS_CACHE_HOST: redis-cache
+      REDIS_CACHE_INSECURE_SKIP_TLS_VERIFY: false
+      REDIS_CACHE_PASSWORD: 123456
+      REDIS_CACHE_SSL: false
+      REDIS_DATABASE: 0
+      REDIS_HOST: redis
+      REDIS_INSECURE_SKIP_TLS_VERIFY: false
+      REDIS_PASSWORD: 123456
+      REDIS_SSL: false
+      RELEASE_CHECK_URL: https://api.github.com/repos/netbox-community/netbox/releases
+      SECRET_KEY: 'r(m)9nLGnz$(_q3N4z1k(EFsMCjjjzx08x9VhNVcfd%6RF#r!6DE@+V5Zk2X'
+      SKIP_SUPERUSER: true
+      WEBHOOKS_ENABLED: true
+    user: "unit:root"
+    restart: always
+    ports:
+      - '8080:8080'
+    healthcheck:
+      test: curl -f http://localhost:8080/login/ || exit 1
+      start_period: 90s
+      timeout: 3s
+      interval: 15s
+    networks:
+      netbox-network:
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./media-files:/opt/netbox/netbox/media:rw
+      - ./reports-files:/opt/netbox/netbox/reports:rw
+      - ./scripts-files:/opt/netbox/netbox/scripts:rw
+  netbox-worker:
+    <<: *netbox
+    depends_on:
+      netbox:
+        condition: service_healthy
+    command:
+      - /opt/netbox/venv/bin/python
+      - /opt/netbox/netbox/manage.py
+      - rqworker
+    ports: []
+    healthcheck:
+      test: ps -aux | grep -v grep | grep -q rqworker || exit 1
+      start_period: 20s
+      timeout: 3s
+      interval: 15s
+  netbox-housekeeping:
+    <<: *netbox
+    depends_on:
+      netbox:
+        condition: service_healthy
+    command:
+      - /opt/netbox/housekeeping.sh
+    ports: []
+    healthcheck:
+      test: ps -aux | grep -v grep | grep -q housekeeping || exit 1
+      start_period: 20s
+      timeout: 3s
+      interval: 15s
+
+  postgres:
+    image: docker.io/postgres:16-alpine
+    healthcheck:
+      test: pg_isready -q -t 2 -d $$POSTGRES_DB -U $$POSTGRES_USER
+      start_period: 20s
+      timeout: 30s
+      interval: 10s
+      retries: 5
+    environment:
+      POSTGRES_DB: netbox
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_USER: netbox
+    restart: always
+    networks:
+      netbox-network:
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: docker.io/valkey/valkey:8.0-alpine
+    command:
+      - sh
+      - -c
+      - valkey-server --appendonly yes --requirepass $$REDIS_PASSWORD
+    restart: always
+    healthcheck: &redis-healthcheck
+      test: '[ $$(valkey-cli --pass "$${REDIS_PASSWORD}" ping) =  ''PONG'' ]'
+      start_period: 5s
+      timeout: 3s
+      interval: 1s
+      retries: 5
+    environment:
+      REDIS_PASSWORD: 123456
+    networks:
+      netbox-network:
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./redis-data:/data
+
+  redis-cache:
+    image: docker.io/valkey/valkey:8.0-alpine
+    command:
+      - sh
+      - -c
+      - valkey-server --requirepass $$REDIS_PASSWORD
+    restart: always
+    healthcheck: *redis-healthcheck
+    environment:
+      REDIS_PASSWORD: 123456
+    networks:
+      netbox-network:
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./redis-cache-data:/data
+          
+networks:
+  netbox-network:
+  
+  
+  
+# docker compose exec netbox /opt/netbox/netbox/manage.py createsuperuser
+# http://host:8080
