@@ -1,0 +1,10 @@
+services:
+  tinyproxy:
+    container_name: tinyproxy
+    image: ajoergensen/tinyproxy
+    restart: always
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./tinyproxy.conf:/etc/tinyproxy/tinyproxy.conf:ro
+    ports:
+      - '8888:8888'

@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  app-with-scope:
+    image: myapps/monitored-by-watchtower
+    labels: [ "com.centurylinklabs.watchtower.scope=myscope" ]
+  scoped-watchtower:
+    image: containrrr/watchtower:latest
+    container_name: scoped-watchtower
+    command: --interval 30 --scope myscope
+    labels: [ "com.centurylinklabs.watchtower.scope=myscope" ]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    command: prometheus grafana
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    environment:
+      WATCHTOWER_SCHEDULE: "0 0 4 * * *"
+      TZ: Asia/Shanghai

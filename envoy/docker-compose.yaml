@@ -1,18 +1,27 @@
-version: '3'
 services:
   envoy:
     container_name: envoy
-    image: envoyproxy/envoy-alpine
-    ports:
-      - 9901:9901
-      - 10000:10000
+    image: envoyproxy/envoy:v1.32-latest
+    restart: always
     volumes:
-      - /etc/localtime:/etc/localtime
-      - ./envoy.yaml:/etc/envoy/envoy.yaml 
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./envoy.yaml:/etc/envoy/envoy.yaml
+    networks:
+      envoy-network:
+    ports:
+      - '8080:8080'
+      - '9901:9901'
 
-  nginx:
-    container_name: nginx
-    image: nginx:alpine
-    network_mode: service:envoy
+  whoami:
+    container_name: whoami
+    image: traefik/whoami:v1.10
+    restart: always
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    networks:
+      envoy-network:
     depends_on:
       - envoy
+
+networks:
+  envoy-network:
