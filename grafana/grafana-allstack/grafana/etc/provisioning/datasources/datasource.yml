@@ -1,0 +1,91 @@
+apiVersion: 1
+
+deleteDatasources:
+  - name: Mimir
+
+datasources:
+- name: Mimir
+  type: prometheus
+  access: proxy
+  uid: mimir
+  orgId: 1
+  url: http://mimir:9009/prometheus
+  basicAuth: false
+  isDefault: false
+  version: 1
+  editable: false
+- name: Tempo
+  type: tempo
+  access: proxy
+  orgId: 1
+  url: http://tempo:3200
+  basicAuth: false
+  isDefault: false
+  version: 1
+  editable: false
+  apiVersion: 1
+  uid: tempo
+  jsonData:
+    tracesToLogsV2:
+      datasourceUid: 'loki'
+      spanStartTimeShift: '-1h'
+      spanEndTimeShift: '1h'
+      tags: [{ key: 'service.name', value: 'service_name' }]
+      filterByTraceID: false
+      filterBySpanID: false
+      customQuery: true
+      query: '{service_name="${__span.tags["service.name"]}"}  |  json | logfmt | traceID="${__span.traceId}"'
+    tracesToMetrics:
+      datasourceUid: 'mimir'
+      spanStartTimeShift: '1h'
+      spanEndTimeShift: '-1h'
+      tags: [{ key: 'service.name', value: 'service_name' }]
+      queries:
+        - name: 'http_request'
+          query: 'irate(grafana_http_request_duration_seconds_count{method="${__span.tags["http.method"]}",$__tags}[1m])'
+        - name: 'go_process_memory'
+          query: 'process_resident_memory_bytes{service="${__span.tags["service.name"]}"}'
+    tracesToProfiles:
+      datasourceUid: 'local-pyroscope'
+      profileTypeId: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds'
+      tags: [{ key: 'service.name', value: 'service_name' }]
+      customQuery: true
+      query: '{service_name="${__span.tags["service.name"]}"}'
+    httpMethod: GET
+    serviceMap:
+      datasourceUid: 'mimir'
+    nodeGraph:
+      enabled: true
+    search:
+      hide: false
+    traceQuery:
+      timeShiftEnabled: true
+      spanStartTimeShift: '1h'
+      spanEndTimeShift: '-1h'
+    spanBar:
+      type: 'Tag'
+      tag: 'http.path'
+    streamingEnabled:
+      search: true
+- name: Loki
+  type: loki
+  access: proxy 
+  orgId: 1
+  url: http://loki:3100
+  basicAuth: false
+  isDefault: false
+  version: 1
+  editable: false
+  jsonData:
+    derivedFields:
+      - datasourceUid: tempo
+        matcherRegex: '"traceID":"(\w+)"'
+        name: TraceID
+        url: $${__value.raw}
+- name: Pyroscope
+  type: grafana-pyroscope-datasource
+  uid: local-pyroscope
+  orgId: 1
+  url: http://pyroscope:4040
+  jsonData:
+    keepCookies: [pyroscope_git_session]

@@ -1,0 +1,11 @@
+apiVersion: 1
+
+apps:
+  - type: grafana-oncall-app
+    name: grafana-oncall-app
+    enabled: true
+    jsonData:
+      stackId: 5
+      orgId: 100
+      onCallApiUrl: http://host.docker.internal:8080/
+      grafanaUrl: http://grafana:3000/

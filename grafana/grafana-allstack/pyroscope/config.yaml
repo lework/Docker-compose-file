@@ -1,0 +1,18 @@
+target: "all"
+
+server:
+  http_listen_port: 4040
+  log_level: info
+  log_format: json
+
+limits:
+  max_query_length: 3d
+
+pyroscopedb:
+  data_path: "/tmp/pyroscope"
+  max_block_duration: 1h
+  min_free_disk_gb: 100
+  min_disk_available_percentage:  50
+
+analytics:
+  reporting_enabled: false

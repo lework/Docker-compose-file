@@ -1,0 +1,270 @@
+version: "3"
+
+
+x-oncall-environment: &oncall-environment
+  DATABASE_TYPE: sqlite3
+  BROKER_TYPE: redis
+  BASE_URL: http://host.docker.internal:8080
+  SECRET_KEY: jyRnfRIeMjYfKdoFa9dKXcNaEGGc8GH1TChmYoWW
+  FEATURE_PROMETHEUS_EXPORTER_ENABLED: true
+  PROMETHEUS_EXPORTER_SECRET: ${PROMETHEUS_EXPORTER_SECRET:-}
+  REDIS_URI: redis://redis:6379/0
+  DJANGO_SETTINGS_MODULE: settings.hobby
+  CELERY_WORKER_QUEUE: "default,critical,long,slack,telegram,webhook,retry,celery,grafana"
+  CELERY_WORKER_CONCURRENCY: "1"
+  CELERY_WORKER_MAX_TASKS_PER_CHILD: "100"
+  CELERY_WORKER_SHUTDOWN_INTERVAL: "65m"
+  CELERY_WORKER_BEAT_ENABLED: "True"
+  GRAFANA_API_URL: http://grafana:3000
+  ALLOWED_HOSTS: "*"
+  TZ: Asia/Shanghai
+  LANG: zh_CN.UTF-8
+
+
+networks:
+  grafana:
+
+services:
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+      - GF_INSTALL_PLUGINS=grafana-oncall-app,grafana-pyroscope-app,grafana-lokiexplore-app,grafana-exploretraces-app,grafana-synthetic-monitoring-app
+      - GF_DIAGNOSTICS_PROFILING_ENABLED=true
+      - GF_DIAGNOSTICS_PROFILING_ADDR=0.0.0.0
+      - GF_DIAGNOSTICS_PROFILING_PORT=8080
+      - GF_DIAGNOSTICS_PROFILING_BLOCK_RATE=5
+      - GF_DIAGNOSTICS_PROFILING_MUTEX_RATE=5
+      - GF_AUTH_MANAGED_SERVICE_ACCOUNTS_ENABLED=true
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./grafana/etc:/etc/grafana
+      - ./grafana/data:/var/lib/grafana
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    user: root
+    ports:
+      - "3001:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: curl -fSs http://127.0.0.1:3000/api/health || exit 1
+      start_period: 3s
+      timeout: 10s
+      interval: 10s
+      retries: 3
+    restart: always
+    depends_on:
+      - loki
+    networks:
+      - grafana
+
+  loki:
+    image: grafana/loki:3.3.0
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./loki/local-config.yaml:/etc/loki/local-config.yaml
+      - ./loki/data:/loki
+    ports:
+      - "3100:3100"
+    healthcheck:
+      test: wget --quiet --tries=1 --output-document=- http://localhost:3100/ready | grep -q -w ready || exit 1
+      start_period: 3s
+      timeout: 10s
+      interval: 10s
+      retries: 3
+    restart: always
+    networks:
+      - grafana
+
+  mimir:
+    image: grafana/mimir:2.14.2
+    command: ["-ingester.native-histograms-ingestion-enabled=true", "-config.file=/etc/mimir.yaml"]
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./mimir/data:/tmp/mimir
+      - ./mimir/rules:/tmp/mimir/rules
+      - ./mimir/mimir.yaml:/etc/mimir.yaml
+    ports:
+      - "9009:9009"
+    restart: always
+    depends_on:
+      - loki
+    networks:
+      - grafana
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    command:
+      - "-config.file=/etc/tempo.yaml"
+    user: root
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./tempo/tempo.yaml:/etc/tempo.yaml
+      - ./tempo/data:/tmp/tempo
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+      - "9411:9411"
+      - "55680:55680"
+      - "55681:55681"
+      - "14250:14250"
+    healthcheck:
+      test: wget --quiet --tries=1 --output-document=- http://localhost:3200/ready | grep -q -w ready || exit 1
+      start_period: 3s
+      timeout: 10s
+      interval: 10s
+      retries: 3
+    restart: always
+    depends_on:
+      - loki
+    networks:
+      - grafana
+
+  pyroscope:
+    image: grafana/pyroscope:1.10.0
+    user: root
+    ports:
+      - "4040:4040"
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./pyroscope/config.yaml:/etc/pyroscope/config.yaml
+      - ./pyroscope/data:/tmp/pyroscope
+    restart: always
+    depends_on:
+      - loki
+    networks:
+      - grafana
+
+  alloy:
+    image: grafana/alloy:v1.3.1
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+    ports:
+      - "12347:12345"
+      - "12348:12348"
+      - "6832:6832"
+      - "55679:55679"
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./alloy/config.alloy:/etc/alloy/config.alloy
+      - ./alloy/endpoints.json:/etc/alloy/endpoints.json
+    command: [
+      "run",
+      "--server.http.listen-addr=0.0.0.0:12345",
+      "--stability.level=public-preview",
+      "/etc/alloy/config.alloy",
+    ]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    depends_on:
+      - loki
+    networks:
+      - grafana
+
+  k6:
+    image: grafana/k6:0.55.0-with-browser
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+      - K6_PROMETHEUS_RW_SERVER_URL=http://mimir:9009/api/v1/push
+      - K6_DURATION=3600s
+      - K6_VUS=4
+      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+    command: ["run", "-o", "experimental-prometheus-rw", "/scripts/grafana-loadtest.js"]
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./k6/scripts:/scripts
+    depends_on:
+      grafana:
+        condition: service_healthy
+      mimir:
+        condition: service_started
+    networks:
+      - grafana
+
+  oncall_engine:
+    image: grafana/oncall:v1.13.6
+    ports:
+      - "8080:8080"
+    command: sh -c "uwsgi --ini uwsgi.ini"
+    user: root
+    environment: *oncall-environment
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./oncall/data:/var/lib/oncall
+    healthcheck:
+      test: wget --quiet --tries=1 --output-document=- 127.0.0.1:8080 | grep -q -w Ok || exit 1
+      start_period: 3s
+      timeout: 10s
+      interval: 10s
+      retries: 3
+    restart: always
+    depends_on:
+      oncall_db_migration:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks:
+      - grafana
+
+  oncall_celery:
+    image: grafana/oncall:v1.13.6
+    command: sh -c "./celery_with_exporter.sh"
+    user: root
+    environment: *oncall-environment
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./oncall/data:/var/lib/oncall
+    restart: always
+    depends_on:
+      oncall_db_migration:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks:
+      - grafana
+
+  oncall_db_migration:
+    image: grafana/oncall:v1.13.6
+    command: python manage.py migrate --noinput
+    user: root
+    environment: *oncall-environment
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./oncall/data:/var/lib/oncall
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - grafana
+
+  redis:
+    image: redis:7.2-alpine
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./redis/data:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 5s
+      interval: 5s
+      retries: 10
+    networks:
+      - grafana
