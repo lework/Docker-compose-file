@@ -1,0 +1,92 @@
+version: "3"
+
+networks:
+  loki:
+
+services:
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_INSTALL_PLUGINS=grafana-lokiexplore-app
+      - GF_EXPLORE_ENABLED=true
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./grafana/data:/var/lib/grafana
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+        datasources:
+        - name: Loki
+          type: loki
+          access: proxy 
+          orgId: 1
+          url: http://loki:3100
+          basicAuth: false
+          isDefault: true
+          version: 1
+          editable: false
+        EOF
+        /run.sh
+    user: root
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: curl -fSs http://127.0.0.1:3000/api/health || exit 1
+      start_period: 3s
+      timeout: 10s
+      interval: 10s
+      retries: 3
+    restart: always
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      - loki
+
+  loki:
+    image: grafana/loki:3.3.0
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./loki/local-config.yaml:/etc/loki/local-config.yaml
+      - ./loki/data:/loki
+    user: root
+    ports:
+      - "3100:3100"
+    healthcheck:
+      test: wget --quiet --tries=1 --output-document=- http://localhost:3100/ready | grep -q -w ready || exit 1
+      start_period: 3s
+      timeout: 10s
+      interval: 10s
+      retries: 3
+    restart: always
+    networks:
+      - loki
+  
+  # https://github.com/grafana/loki/tree/main/clients/cmd/logstash
+  logstash-output-loki:
+    image: grafana/logstash-output-loki:3.3.2
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
+    volumes:
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+      - ./logstash/data:/data
+    user: root
+    restart: always
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      - loki

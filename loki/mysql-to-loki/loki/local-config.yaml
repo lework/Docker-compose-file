@@ -1,0 +1,53 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  log_level: info
+#  log_format: json
+  grpc_server_max_recv_msg_size: 16777216
+  grpc_server_max_send_msg_size: 16777216
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2014-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+ingester:
+  max_chunk_age: 10m
+
+limits_config:
+  max_streams_per_user: 0
+  max_global_streams_per_user: 0
+  max_line_size: 5MB
+  max_label_names_per_series: 32
+  query_timeout: 3m
+  ingestion_rate_mb: 10
+  reject_old_samples: false
+  max_chunks_per_query: 20000000
+  max_query_length: 0
+  max_query_series: 5000
+  max_query_parallelism: 100
+  
+
+ruler:
+  alertmanager_url: http://localhost:9093
+
+analytics:
+  reporting_enabled: false
