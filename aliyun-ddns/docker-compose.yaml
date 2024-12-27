@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  aliyun-ddns:
+    image: sanjusss/aliyun-ddns:0.2.7.3-linux-amd64
+    restart: always
+    environment:
+    - AKID=[ALIYUN's AccessKey-ID]
+    - AKSCT=[ALIYUN's AccessKey-Secret]
+    - DOMAIN=xx.test.cn
+    - REDO=600
+    - TTL=600
+    - TIMEZONE=8.0
+    - TYPE=A
+    
+    
+# https://github.com/sanjusss/aliyun-ddns
